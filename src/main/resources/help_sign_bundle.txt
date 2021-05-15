@@ -1,0 +1,3 @@
+        EXAMPLES
+
+$ bundlesigner signbundle --bundle <input aab file path> --bin <output bin path> --out <directory to save signed apks> -v
