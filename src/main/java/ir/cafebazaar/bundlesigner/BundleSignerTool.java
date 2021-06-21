@@ -35,6 +35,7 @@ import shadow.bundletool.com.android.utils.FileUtils;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.*;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
@@ -59,7 +60,7 @@ public class BundleSignerTool {
     private static final String HELP_PAGE_SIGN_BUNDLE = "/help_sign_bundle.txt";
     private static final String HELP_PAGE_VERIFY = "/help_verify.txt";
 
-    private static final String TMP_DIR_PATH = "tmp_signer";
+    private static String TMP_DIR_PATH;
 
     private static MessageDigest sha256 = null;
     private static MessageDigest sha1 = null;
@@ -67,10 +68,17 @@ public class BundleSignerTool {
 
 
     static {
-        File tmpDirectory = new File(TMP_DIR_PATH);
         try {
-            FileUtils.deleteRecursivelyIfExists(tmpDirectory);
-            tmpDirectory.mkdir();
+            Path tmpDirectory = Files.createTempDirectory("bundle_signer");
+            TMP_DIR_PATH = tmpDirectory.toAbsolutePath().toString();
+            Runtime.getRuntime().addShutdownHook(
+                    new Thread(() -> {
+                        try {
+                            FileUtils.deleteRecursivelyIfExists(tmpDirectory.toFile());
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }));
         } catch (Exception e) {
             System.err.println(e.getMessage());
             System.exit(1);
@@ -135,7 +143,6 @@ public class BundleSignerTool {
             exitMessage = e.getMessage();
             exitCode = 4;
         } finally {
-            FileUtils.deleteRecursivelyIfExists(new File(TMP_DIR_PATH));
             if (!exitMessage.isEmpty())
                 System.err.println(exitMessage);
             System.exit(exitCode);
@@ -326,7 +333,6 @@ public class BundleSignerTool {
                 signerConfigs.add(signerConfig);
             }
         }
-
 
         File keyStore = loadDefaultKeyStore();
 
@@ -656,7 +662,6 @@ public class BundleSignerTool {
     private static String buildApkSet(File bundle, File keyStore, String outputPath) throws BundleToolIOException {
 
         String apksPath = outputPath + File.separator + bundle.getName().split("\\.")[0] + ".apks";
-
         try (AdbServer adbServer = DdmlibAdbServer.getInstance()) {
             final ParsedFlags flags;
             String[] args = {"--bundle", bundle.getAbsolutePath(),
