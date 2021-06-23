@@ -395,7 +395,7 @@ public class BundleSignerTool {
                 // sign version 1
 
                 String apkName = zipEntry.getName().split(".apk")[0] + ".apk";
-                apkName = apkName.replace(File.separator, "_");
+                apkName = apkName.replace("/", "_");
 
                 File outputApk = new File(TMP_DIR_PATH + File.separator + apkName);
 
