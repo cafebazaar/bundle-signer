@@ -82,4 +82,13 @@ These options specify the configuration of a particular signer. To delimit optio
 | --min-sdk-version | Lowest API Level on which this bundle's signatures will be verified. By default, the value from AndroidManifest.xml is used. The higher the value, the stronger security parameters are used when signing.|  
 | --max-sdk-version | Highest API Level on which this bundle's signatures will be verified. By default, the highest possible value is used.|  
 | -h, --help| Shows help about this command and exit|  
-  
+
+# Compilation with Maven
+
+Pre-compiled versions are available [here](https://github.com/cafebazaar/bundle-signer/releases) - besides, You can use
+maven to compile and package bundle-signer by running the following command:
+
+```sh  
+mvn clean package shade:shade
+```
+
