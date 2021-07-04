@@ -77,12 +77,12 @@ public class BundleSignerTool {
                             FileUtils.deleteRecursivelyIfExists(tmpDirectory.toFile());
                         } catch (IOException e) {
                             System.out.println("Warning: Failed to remove tmp dir.");
-                            System.exit(ReturnCodes.TMP_DELETE_FAILURE.ordinal());
+                            System.exit(8);
                         }
                     }));
         } catch (Exception e) {
             System.err.println(e.getMessage());
-            System.exit(ReturnCodes.TMP_CREATE_FAILURE.ordinal());
+            System.exit(1);
         }
     }
 
@@ -97,7 +97,7 @@ public class BundleSignerTool {
 
         addProviders();
 
-        int exitCode = ReturnCodes.SUCCESS.ordinal();
+        int exitCode = 0;
         String exitMessage = "";
 
         String cmd = params[0];
@@ -124,25 +124,25 @@ public class BundleSignerTool {
             }
         } catch (ParameterException | OptionsParser.OptionsException e) {
             exitMessage = e.getMessage();
-            exitCode = ReturnCodes.INVALID_PARAMS.ordinal();
+            exitCode = 2;
         } catch (MinSdkVersionException e) {
             exitMessage = "Failed to determine APK's minimum supported platform version"
                     + ". Use --min-sdk-version to override";
-            exitCode = ReturnCodes.MISSED_MIN_SDK.ordinal();
+            exitCode = 3;
         } catch (InvalidBundleException e) {
             exitMessage = e.getMessage();
-            exitCode = ReturnCodes.INVALID_BUNDLE.ordinal();
+            exitCode = 5;
         } catch (BundleToolIOException e) {
             exitMessage = e.getMessage();
-            exitCode = ReturnCodes.BUNDLE_TOOL_EXCEPTION.ordinal();
+            exitCode = 6;
 
         } catch (ApkFormatException e) {
             exitMessage = e.getMessage();
-            exitCode = ReturnCodes.MALFORMED_APK.ordinal();
+            exitCode = 7;
 
         } catch (RuntimeException e) {
             exitMessage = e.getMessage();
-            exitCode = ReturnCodes.RUNTIME_EXCEPTION.ordinal();
+            exitCode = 4;
         } finally {
             if (!exitMessage.isEmpty())
                 System.err.println(exitMessage);

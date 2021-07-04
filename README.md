@@ -8,8 +8,10 @@ bundle signer tool, which you can use to sign your app offline, on your device. 
 file for generating application packages.
 
 # Usage
+Bundle signer is a command-line tool. You need to install **Java 9 or above** to run this program. Following example 
+shows how to generate signed binary file of your bundle application:
 ```sh  
-$ java -jar bundlesigner-0.1.1.jar genbin  -v --bundle app.aab --bin /home/bin_files/  --v2-signing-enabled true 
+$ java -jar bundlesigner-0.1.3.jar genbin  -v --bundle app.aab --bin /home/bin_files/  --v2-signing-enabled true 
 --v3-signing-enabled false  --key dsa-1024.pk8  --cert dsa-1024.x509.pem  
 ```
 This generates signed digest of the provided bundle. The output of this command is a binary file that contains signed 
