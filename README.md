@@ -92,6 +92,6 @@ Pre-compiled versions are available [here](https://github.com/cafebazaar/bundle-
 maven to compile and package bundle-signer by running the following command:
 
 ```sh  
-mvn clean package shade:shade
+mvn clean cmpile package shade:shade
 ```
 

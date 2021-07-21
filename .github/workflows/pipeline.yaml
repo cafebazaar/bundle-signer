@@ -1,0 +1,83 @@
+name: Bundle Signer CI
+
+on: [ push ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v2
+        with:
+          java-version: '8'
+          distribution: 'adopt'
+
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Build with Maven
+        run: |
+          mvn clean compile package shade:shade
+          cp target/original-bundlesigner*.jar .github/workflows/test_resources/bundlesigner.jar
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: test_resources
+          path: .github/workflows/test_resources/
+
+  test-on-ubuntu:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Download test resources
+        uses: actions/download-artifact@v2
+        with:
+          name: test_resources
+
+      - name: Generate sign file
+        run: |
+          java -jar bundlesigner.jar genbin --bundle bundle.aab --bin . --key key.pk8 --cert cert.pem --v2-signing-enabled true --v3-signing-enabled true
+          (ls bundle.bin && >> /dev/null 2>&1 && echo bin file generated) || exit 1
+
+
+  test-on-mac-os:
+    needs: build
+    runs-on: macos-latest
+
+    steps:
+
+      - name: Download test resources
+        uses: actions/download-artifact@v2
+        with:
+          name: test_resources
+
+      - name: Generate sign file
+        run: |
+          java -jar bundlesigner.jar genbin --bundle bundle.aab --bin . --key key.pk8 --cert cert.pem --v2-signing-enabled true --v3-signing-enabled true
+          (ls bundle.bin && >> /dev/null 2>&1 && echo bin file generated) || exit 1
+
+
+  test-on-windows:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+
+      - name: Download test resources
+        uses: actions/download-artifact@v2
+        with:
+          name: test_resources
+
+      - name: Generate sign file
+        run: |
+            java -jar bundlesigner.jar genbin --bundle bundle.aab --bin . --key key.pk8 --cert cert.pem --v2-signing-enabled true --v3-signing-enabled true
+            [System.IO.File]::Exists("bundle.bin") ? "echo bin file generated" : "exit 1"
