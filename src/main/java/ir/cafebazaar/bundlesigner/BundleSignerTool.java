@@ -29,6 +29,7 @@ import ir.cafebazaar.apksig.ApkSigner;
 import ir.cafebazaar.apksig.ApkVerifier;
 import ir.cafebazaar.apksig.apk.ApkFormatException;
 import ir.cafebazaar.apksig.apk.MinSdkVersionException;
+import ir.cafebazaar.bundlesigner.command.SignBundleCommand;
 import org.conscrypt.OpenSSLProvider;
 import shadow.bundletool.com.android.utils.FileUtils;
 
@@ -36,6 +37,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
@@ -60,7 +62,7 @@ public class BundleSignerTool {
     private static final String HELP_PAGE_SIGN_BUNDLE = "/help_sign_bundle.txt";
     private static final String HELP_PAGE_VERIFY = "/help_verify.txt";
 
-    private static String TMP_DIR_PATH;
+    public static String TMP_DIR_PATH;
 
     private static MessageDigest sha256 = null;
     private static MessageDigest sha1 = null;
@@ -538,8 +540,8 @@ public class BundleSignerTool {
         }
 
         // params
-        File bundle = null;
-        File binFile = null;
+        String bundlePath = null;
+        String binFilePath = null;
         String outputPath = null;
 
         // parse params
@@ -554,10 +556,10 @@ public class BundleSignerTool {
                     printUsage(HELP_PAGE_SIGN_BUNDLE);
                     return;
                 case "bundle":
-                    bundle = new File(optionsParser.getRequiredValue("Path to bundle file"));
+                    bundlePath = optionsParser.getRequiredValue("Path to bundlePath file");
                     break;
                 case "bin":
-                    binFile = new File(optionsParser.getRequiredValue("Path to bin file"));
+                    binFilePath = optionsParser.getRequiredValue("Path to bin file");
                     break;
                 case "out":
                     outputPath = optionsParser.getRequiredValue("Output files path");
@@ -565,11 +567,11 @@ public class BundleSignerTool {
             }
         }
 
-        if (bundle == null) {
-            throw new ParameterException("Missing bundle file");
+        if (bundlePath == null) {
+            throw new ParameterException("Missing bundlePath file");
         }
 
-        if (binFile == null) {
+        if (binFilePath == null) {
             throw new ParameterException("Missing bin file");
         }
 
@@ -577,155 +579,22 @@ public class BundleSignerTool {
             throw new ParameterException("Missing output path");
         }
 
-        if (!Files.exists(binFile.toPath())) {
+        if (!Files.exists(Paths.get(binFilePath))) {
             throw new ParameterException("Passed Bin file does not exist");
         }
 
-        if (!Files.exists(bundle.toPath())) {
+        if (!Files.exists(Paths.get(bundlePath))) {
             throw new ParameterException("Bundle file does not exist");
         }
 
-        // parse bin file
-        BufferedReader binReader = new BufferedReader(new FileReader(binFile));
-        binReader.readLine();
-        String line = binReader.readLine();
+        SignBundleCommand.Builder commandBuilder = new SignBundleCommand.Builder()
+                .setBundle(bundlePath)
+                .setBinFile(binFilePath)
+                .setOutputPath(outputPath);
 
-        String[] signVersionInfo = line.split(",");
-        boolean signV2Enabled = signVersionInfo[0].split(":")[1].trim().equals("true");
-        boolean signV3Enabled = signVersionInfo[0].split(":")[1].trim().equals("true");
+        SignBundleCommand command = commandBuilder.build();
+        command.execute();
 
-        Map<String, String> apkSignV1 = new HashMap<>();
-        Map<String, String> apkSignV2V3 = new HashMap<>();
-
-        String apkName = null;
-        int expectedBinVersion = 1;
-        while ((line = binReader.readLine()) != null) {
-            if (line.contains(".apk")) {
-                apkName = line;
-            } else if (expectedBinVersion == 1) {
-
-                apkSignV1.put(apkName, line);
-                if (signV2Enabled || signV3Enabled)
-                    expectedBinVersion = 2;
-
-            } else {
-                apkSignV2V3.put(apkName, line);
-                expectedBinVersion = 1;
-            }
-        }
-
-        File keyStore = loadDefaultKeyStore();
-        String apksPath = buildApkSet(bundle, keyStore, TMP_DIR_PATH, false);
-        String universalPath = buildApkSet(bundle, keyStore, TMP_DIR_PATH, true);
-        extractAndSignApks(outputPath, signV2Enabled, signV3Enabled, apkSignV1, apkSignV2V3, apksPath);
-        extractAndSignApks(outputPath, signV2Enabled, signV3Enabled, apkSignV1, apkSignV2V3, universalPath);
-
-        FileUtils.copyFile(new File(apksPath),
-                new File(outputPath + File.separator + bundle.getName() + ".apks"));
-    }
-
-    private static void extractAndSignApks(String outputPath, boolean signV2Enabled, boolean signV3Enabled,
-                                           Map<String, String> apkSignV1, Map<String, String> apkSignV2V3,
-                                           String apksPath) throws Exception {
-        FileInputStream apksStream = new FileInputStream(apksPath);
-        ZipInputStream zis = new ZipInputStream(apksStream);
-        ZipEntry zipEntry = zis.getNextEntry();
-
-        while (zipEntry != null) {
-            if (!zipEntry.getName().contains(".apk")) {
-                zipEntry = zis.getNextEntry();
-                continue;
-            }
-
-            // write zip entry to apk file
-            String fileName = zipEntry.getName();
-
-            File apk = new File(TMP_DIR_PATH + File.separator + fileName);
-            new File(apk.getParent()).mkdirs();
-
-            FileOutputStream fos = new FileOutputStream(apk);
-            int len;
-            byte[] buffer = new byte[1024];
-            while ((len = zis.read(buffer)) > 0) {
-                fos.write(buffer, 0, len);
-            }
-            fos.close();
-
-            // write sign to tmp bin file
-            File tmpBin = new File(TMP_DIR_PATH + File.separator + "tmp_bin");
-            PrintWriter writer = new PrintWriter(tmpBin);
-            writer.println(apk.toPath());
-            writer.println(apkSignV1.get(apk.getName()));
-            writer.close();
-
-            List<ApkSigner.SignerConfig> signerConfigs = new ArrayList<>(0);
-
-            File v1SignedApk;
-
-            String[] parentDirs = apk.getParent().split(File.separator);
-            String apkType = parentDirs[parentDirs.length - 1];
-
-            if (signV2Enabled || signV3Enabled) {
-                v1SignedApk = new File(TMP_DIR_PATH + File.separator + "v1_" + apk.getName());
-            } else {
-                if(apk.getName().contains("universal"))
-                    v1SignedApk = new File(outputPath + File.separator + apk.getName());
-                else
-                    v1SignedApk = new File(outputPath + File.separator + apkType + "_" + apk.getName());
-            }
-
-            ApkSigner.Builder apkSignerBuilder =
-                    new ApkSigner.Builder(signerConfigs, true)
-                            .setInputApk(apk)
-                            .setOutputApk(v1SignedApk)
-                            .setInputBin(tmpBin);
-
-            ApkSigner apkSigner = apkSignerBuilder.build();
-            apkSigner.addSignV1ToApk();
-
-            if (signV2Enabled || signV3Enabled) {
-
-                // write sign to tmp bin file
-                tmpBin = new File(TMP_DIR_PATH + File.separator + "tmp_bin");
-                writer = new PrintWriter(tmpBin);
-                writer.println(apk.toPath());
-                writer.println(apkSignV2V3.get(apk.getName()));
-                writer.close();
-
-                File V2V3SignedApk;
-                if(apk.getName().contains("universal"))
-                    V2V3SignedApk = new File(outputPath + File.separator  + apk.getName());
-                else
-                    V2V3SignedApk = new File(outputPath + File.separator + apkType + "_" + apk.getName());
-
-                apkSignerBuilder =
-                        new ApkSigner.Builder(new ArrayList<>(0), true)
-                                .setInputApk(v1SignedApk)
-                                .setOutputApk(V2V3SignedApk)
-                                .setInputBin(tmpBin)
-                                .setOtherSignersSignaturesPreserved(false)
-                                .setV1SigningEnabled(false)
-                                .setV2SigningEnabled(signV2Enabled)
-                                .setV3SigningEnabled(signV3Enabled)
-                                .setV4SigningEnabled(false)
-                                .setForceSourceStampOverwrite(false)
-                                .setVerityEnabled(false)
-                                .setV4ErrorReportingEnabled(false)
-                                .setDebuggableApkPermitted(true)
-                                .setSigningCertificateLineage(null);
-
-                apkSigner = apkSignerBuilder.build();
-
-                apkSigner.addSignedContentDigestsV2V3Cafebazaar();
-
-            }
-
-            zis.closeEntry();
-            zipEntry = zis.getNextEntry();
-        }
-        zis.closeEntry();
-        zis.close();
-        apksStream.close();
     }
 
     private static File loadDefaultKeyStore() throws IOException {
