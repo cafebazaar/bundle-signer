@@ -1,3 +1,5 @@
+[![Bundle Signer CI](https://github.com/cafebazaar/bundle-signer/actions/workflows/pipeline.yaml/badge.svg)](https://github.com/cafebazaar/bundle-signer/actions/workflows/pipeline.yaml)
+
 # bundle signer
 App Bundle is a publishing format for Android applications which includes all your app compiled code and resources.  
 Bazaar uses your app bundle to generate and publish optimized packages for devices with different configurations.  
@@ -92,6 +94,6 @@ Pre-compiled versions are available [here](https://github.com/cafebazaar/bundle-
 maven to compile and package bundle-signer by running the following command:
 
 ```sh  
-mvn clean cmpile package shade:shade
+mvn clean compile package shade:shade
 ```
 
