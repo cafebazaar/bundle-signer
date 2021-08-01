@@ -8,6 +8,8 @@ and users will receive smaller and more optimized apps.
 we do not get and save your application signing key to keep your app security. Instead, we presented you with a   
 bundle signer tool, which you can use to sign your app offline, on your device. You just give us your signed binary   
 file for generating application packages.
+<br />
+See [the Farsi document](https://developers.cafebazaar.ir/fa/guidelines/feature/app_bundle#).
 
 # Usage
 Bundle signer is a command-line tool. You need to install **Java 9 or above** to run this program. Following example 
