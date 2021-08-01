@@ -3,6 +3,8 @@ package ir.cafebazaar.bundlesigner.command;
 import ir.cafebazaar.apksig.ApkSigner;
 import ir.cafebazaar.apksig.apk.ApkFormatException;
 import ir.cafebazaar.bundlesigner.BundleToolWrapper;
+import net.lingala.zip4j.ZipFile;
+import net.lingala.zip4j.model.FileHeader;
 
 import java.io.*;
 import java.security.InvalidKeyException;
@@ -10,8 +12,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 import static ir.cafebazaar.bundlesigner.BundleSignerTool.TMP_DIR_PATH;
 
@@ -134,39 +134,23 @@ public class GenBinCommand {
     }
 
     private void extractAndSignApkSet(String apksPath, File binV1, File binV2V3, File tmpBin) throws Exception {
-        FileInputStream apksStream = new FileInputStream(apksPath);
-        ZipInputStream zis = new ZipInputStream(apksStream);
-        ZipEntry zipEntry = zis.getNextEntry();
+        ZipFile apkZip = new ZipFile(apksPath);
+        apkZip.extractAll(TMP_DIR_PATH);
+        List<FileHeader> apkSetEntries = apkZip.getFileHeaders();
 
-        while (zipEntry != null) {
-            if (!zipEntry.getName().contains(".apk")) {
-                zipEntry = zis.getNextEntry();
+        for (FileHeader apkSetEntry : apkSetEntries) {
+            if (!apkSetEntry.getFileName().contains("apk"))
                 continue;
-            }
 
-            String fileName = zipEntry.getName();
-            File apk = new File(TMP_DIR_PATH + File.separator + fileName);
+            File apk = new File(TMP_DIR_PATH + File.separator + apkSetEntry.getFileName());
             new File(apk.getParent()).mkdirs();
 
-            FileOutputStream fos = new FileOutputStream(apk);
-            int len;
-            byte[] buffer = new byte[1024];
-            while ((len = zis.read(buffer)) > 0) {
-                fos.write(buffer, 0, len);
-            }
-            fos.close();
-
-            String apkName = zipEntry.getName().split(".apk")[0] + ".apk";
+            String apkName = apkSetEntry.getFileName().split(".apk")[0] + ".apk";
             apkName = apkName.replace("/", "_");
 
             calculateSignOfApk(apkName, binV1, binV2V3, tmpBin, apk);
 
-            zis.closeEntry();
-            zipEntry = zis.getNextEntry();
         }
-        zis.closeEntry();
-        zis.close();
-        apksStream.close();
     }
 
     private void calculateSignOfApk(String apkName, File binV1, File binV2V3, File tmpBin, File apk) throws IOException,
@@ -250,7 +234,7 @@ public class GenBinCommand {
         }
     }
 
-    private static void appendFiles(File src, File dest) throws IOException {
+    private void appendFiles(File src, File dest) throws IOException {
         BufferedReader reader = new BufferedReader(new FileReader(src));
         PrintWriter writer = new PrintWriter(new FileWriter(dest, true));
 
