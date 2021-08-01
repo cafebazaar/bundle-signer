@@ -1,5 +1,7 @@
 package ir.cafebazaar.bundlesigner.command;
 
+import ir.cafebazaar.bundlesigner.BundleSignerTool;
+import ir.cafebazaar.bundlesigner.SignerParams;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -7,14 +9,15 @@ import shadow.bundletool.com.android.utils.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-public class SignBundleCommandTest {
-
-    private static final String outputDir = "signCommandOutput";
+public class GenBinCommandTestCase {
+    private static final String outputDir = "genBinCommandOutput";
 
     @Before
     public void setUp() {
@@ -39,11 +42,26 @@ public class SignBundleCommandTest {
         String bundleFileName = "bundle";
 
         String bundlePath = Objects.requireNonNull(getClass().getClassLoader().getResource(String.format("ir.cafebazaar.bundlesigner/%s.aab", bundleFileName))).getPath();
-        String binFilePath = Objects.requireNonNull(getClass().getClassLoader().getResource(String.format("ir.cafebazaar.bundlesigner/%s.bin", bundleFileName))).getPath();
 
-        SignBundleCommand.Builder builder = new SignBundleCommand.Builder();
-        builder.setBundle(bundlePath).setBinFile(binFilePath).setOutputPath(outputDir);
-        SignBundleCommand command = builder.build();
+        GenBinCommand.Builder builder = new GenBinCommand.Builder();
+        boolean v2Enabled = false;
+        boolean v3Enabled = false;
+        List<SignerParams> signers = new ArrayList<>(1);
+        SignerParams signerParams = new SignerParams();
+//        List<BundleSignerTool.ProviderInstallSpec> providers = new ArrayList<>();
+//        BundleSignerTool.ProviderInstallSpec providerParams = new BundleSignerTool.ProviderInstallSpec();
+
+        builder.setBundle(bundlePath)
+                .setBin(outputDir)
+                .setSignV2Enabled(v2Enabled)
+                .setSignV3Enabled(v3Enabled)
+                .setDebuggableApkPermitted(true)
+                .setVerbose(true)
+//                .setSingerConfigs()
+                .setMinSdkVersion(1)
+                .setMinSdkVersionSpecified(true);
+
+        GenBinCommand command = builder.build();
 
         command.execute();
 

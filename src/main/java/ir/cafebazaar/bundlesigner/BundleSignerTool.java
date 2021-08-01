@@ -29,6 +29,7 @@ import ir.cafebazaar.apksig.ApkSigner;
 import ir.cafebazaar.apksig.ApkVerifier;
 import ir.cafebazaar.apksig.apk.ApkFormatException;
 import ir.cafebazaar.apksig.apk.MinSdkVersionException;
+import ir.cafebazaar.bundlesigner.command.GenBinCommand;
 import ir.cafebazaar.bundlesigner.command.SignBundleCommand;
 import org.conscrypt.OpenSSLProvider;
 import shadow.bundletool.com.android.utils.FileUtils;
@@ -51,7 +52,7 @@ import java.util.zip.ZipInputStream;
 
 
 /**
- * Command-line tool for signing APKs and for checking whether an APK's signature are expected to
+ * Command-line tool for signing bundles and for checking whether an APK's signature are expected to
  * verify on Android devices.
  */
 public class BundleSignerTool {
@@ -166,30 +167,30 @@ public class BundleSignerTool {
     }
 
     private static void getContentDigest(String[] params) throws Exception {
+
         if (params.length == 0) {
             printUsage(HELP_PAGE_GET_CONTENT_DIGESTS);
             return;
         }
 
-        File finalBin;
-        File inputBundle = null;
         String binFilePath = null;
+        String bundlePath = null;
         boolean verbose = false;
         boolean v2SigningEnabled = false;
         boolean v3SigningEnabled = false;
         boolean debuggableApkPermitted = true;
         int minSdkVersion = 1;
         boolean minSdkVersionSpecified = false;
+        int maxSdkVersion = Integer.MAX_VALUE;
+
         List<SignerParams> signers = new ArrayList<>(1);
         SignerParams signerParams = new SignerParams();
         List<ProviderInstallSpec> providers = new ArrayList<>();
         ProviderInstallSpec providerParams = new ProviderInstallSpec();
-        int maxSdkVersion = Integer.MAX_VALUE;
         OptionsParser optionsParser = new OptionsParser(params);
+
         String optionName;
         String optionOriginalForm;
-
-
         while ((optionName = optionsParser.nextOption()) != null) {
             optionOriginalForm = optionsParser.getOptionOriginalForm();
             switch (optionName) {
@@ -201,10 +202,10 @@ public class BundleSignerTool {
                     binFilePath = optionsParser.getRequiredValue("Output file path");
                     break;
                 case "bundle":
-                    inputBundle = new File(optionsParser.getRequiredValue("Input file name"));
+                    bundlePath = optionsParser.getRequiredValue("Input file name");
                     break;
                 case "min-sdk-version":
-                    minSdkVersion = optionsParser.getRequiredIntValue("Mininimum API Level");
+                    minSdkVersion = optionsParser.getRequiredIntValue("Minimum API Level");
                     minSdkVersionSpecified = true;
                     break;
                 case "max-sdk-version":
@@ -282,21 +283,17 @@ public class BundleSignerTool {
             }
         }
 
-        if (inputBundle == null) {
+        if (bundlePath == null) {
             throw new ParameterException("Missing input Bundle file path");
         }
 
         if (binFilePath == null) {
             throw new ParameterException("Missing output Bin file path");
-        } else {
-            String binFileName = inputBundle.getName().split("\\.")[0] + ".bin";
-            finalBin = new File(binFilePath + File.separator + binFileName);
         }
 
-        if (!Files.exists(inputBundle.toPath())) {
+        if (!Files.exists(new File(binFilePath).toPath())) {
             throw new ParameterException("Input bundle file does not exist");
         }
-
 
         if (!signerParams.isEmpty()) {
             signers.add(signerParams);
@@ -312,8 +309,7 @@ public class BundleSignerTool {
 
         if ((minSdkVersionSpecified) && (minSdkVersion > maxSdkVersion)) {
             throw new ParameterException(
-                    "Min API Level (" + minSdkVersion + ") > max API Level (" + maxSdkVersion
-                            + ")");
+                    "Min API Level (" + minSdkVersion + ") > max API Level (" + maxSdkVersion + ")");
         }
 
         // Install additional JCA Providers
@@ -336,201 +332,20 @@ public class BundleSignerTool {
             }
         }
 
-        File keyStore = loadDefaultKeyStore();
+        GenBinCommand.Builder commandBuilder = new GenBinCommand.Builder();
+        commandBuilder.setBundle(bundlePath)
+                .setBin(binFilePath)
+                .setSignV2Enabled(v2SigningEnabled)
+                .setSignV3Enabled(v3SigningEnabled)
+                .setSingerConfigs(signerConfigs)
+                .setVerbose(verbose)
+                .setMinSdkVersionSpecified(minSdkVersionSpecified)
+                .setMinSdkVersion(minSdkVersion)
+                .setDebuggableApkPermitted(debuggableApkPermitted);
 
-        String apksPath = buildApkSet(inputBundle, keyStore, TMP_DIR_PATH, false);
-        String universalPath = buildApkSet(inputBundle, keyStore, TMP_DIR_PATH, true);
+        GenBinCommand command = commandBuilder.build();
+        command.execute();
 
-
-        File binV1 = new File(TMP_DIR_PATH + File.separator + "binv1");
-        File binV2V3 = new File(TMP_DIR_PATH + File.separator + "binv2_v3");
-        File tmpBin = new File(TMP_DIR_PATH + File.separator + "tmp_bin");
-
-        signApkSet(v2SigningEnabled, v3SigningEnabled, debuggableApkPermitted, minSdkVersion, minSdkVersionSpecified,
-                signerConfigs, apksPath, binV1, binV2V3, tmpBin);
-
-        signApkSet(v2SigningEnabled, v3SigningEnabled, debuggableApkPermitted, minSdkVersion, minSdkVersionSpecified,
-                signerConfigs, universalPath, binV1, binV2V3, tmpBin);
-
-
-        generateFinalBinFile(binV1, binV2V3, finalBin, v2SigningEnabled, v3SigningEnabled);
-
-
-        if (verbose) {
-            System.out.println("Digest content generated");
-        }
-    }
-
-    private static String buildApkSet(File bundle, File keyStore, String outputPath, boolean universalMode)
-            throws BundleToolIOException {
-
-        String bundleName;
-        if (universalMode) {
-            bundleName = "universal";
-        } else {
-            bundleName = bundle.getName().split("\\.")[0];
-        }
-        String apksPath = outputPath + File.separator + bundleName + ".apks";
-
-        ArrayList<String> args = new ArrayList<>();
-        args.add("--bundle");
-        args.add(bundle.getAbsolutePath());
-        args.add("--output");
-        args.add(apksPath);
-        args.add("--ks");
-        args.add(keyStore.getAbsolutePath());
-        args.add("--ks-key-alias=default");
-        args.add("--ks-pass=pass:defaultpass");
-        if (universalMode) {
-            args.add("--mode=universal");
-        }
-
-        try (AdbServer adbServer = DdmlibAdbServer.getInstance()) {
-            final ParsedFlags flags;
-            flags = new FlagParser().parse(args.toArray(new String[args.size()]));
-            BuildApksCommand.fromFlags(flags, adbServer).execute();
-        } catch (UncheckedIOException e) {
-            throw new BundleToolIOException(e.getMessage());
-        }
-        return apksPath;
-    }
-
-    private static void appendFiles(File src, File dest) throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(src));
-        PrintWriter writer = new PrintWriter(new FileWriter(dest, true));
-
-        String line;
-        while ((line = reader.readLine()) != null) {
-            writer.println(line);
-        }
-
-        reader.close();
-        writer.close();
-
-    }
-
-    private static void signApkSet(boolean v2SigningEnabled, boolean v3SigningEnabled, boolean debuggableApkPermitted,
-                                   int minSdkVersion, boolean minSdkVersionSpecified,
-                                   List<ApkSigner.SignerConfig> signerConfigs, String apksPath, File binV1,
-                                   File binV2V3, File tmpBin) throws IOException, ApkFormatException, NoSuchAlgorithmException,
-            InvalidKeyException, SignatureException, ClassNotFoundException {
-        FileInputStream apksStream = new FileInputStream(apksPath);
-        ZipInputStream zis = new ZipInputStream(apksStream);
-        ZipEntry zipEntry = zis.getNextEntry();
-
-        while (zipEntry != null) {
-            if (!zipEntry.getName().contains(".apk")) {
-                zipEntry = zis.getNextEntry();
-                continue;
-            }
-
-            String fileName = zipEntry.getName();
-            File apk = new File(TMP_DIR_PATH + File.separator + fileName);
-            new File(apk.getParent()).mkdirs();
-
-            FileOutputStream fos = new FileOutputStream(apk);
-            int len;
-            byte[] buffer = new byte[1024];
-            while ((len = zis.read(buffer)) > 0) {
-                fos.write(buffer, 0, len);
-            }
-            fos.close();
-
-            String apkName = zipEntry.getName().split(".apk")[0] + ".apk";
-            apkName = apkName.replace("/", "_");
-
-            calculateSignOfApk(v2SigningEnabled, v3SigningEnabled, debuggableApkPermitted, minSdkVersion,
-                    minSdkVersionSpecified, signerConfigs, apkName, binV1, binV2V3, tmpBin, apk);
-
-            zis.closeEntry();
-            zipEntry = zis.getNextEntry();
-        }
-        zis.closeEntry();
-        zis.close();
-        apksStream.close();
-    }
-
-    private static void calculateSignOfApk(boolean v2SigningEnabled, boolean v3SigningEnabled, boolean debuggableApkPermitted,
-                                           int minSdkVersion, boolean minSdkVersionSpecified, List<ApkSigner.SignerConfig> signerConfigs,
-                                           String apkName, File binV1, File binV2V3, File tmpBin, File apk) throws IOException,
-            ApkFormatException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, ClassNotFoundException {
-
-        ApkSigner.Builder apkSignerBuilder =
-                new ApkSigner.Builder(new ArrayList<>(0), true)
-                        .setInputApk(apk)
-                        .setOutputBin(tmpBin)
-                        .setOtherSignersSignaturesPreserved(false)
-                        .setV1SigningEnabled(true)
-                        .setV2SigningEnabled(v2SigningEnabled)
-                        .setV3SigningEnabled(v3SigningEnabled)
-                        .setDebuggableApkPermitted(debuggableApkPermitted);
-        if (minSdkVersionSpecified) {
-            apkSignerBuilder.setMinSdkVersion(minSdkVersion);
-        }
-
-        ApkSigner apkSigner = apkSignerBuilder.build();
-        apkSigner.genV1Bin();
-
-        apkSignerBuilder = new ApkSigner.Builder(signerConfigs)
-                .setInputBin(tmpBin)
-                .setOutputBin(tmpBin);
-
-        apkSigner = apkSignerBuilder.build();
-        apkSigner.signV1();
-        appendFiles(tmpBin, binV1);
-
-        if (v2SigningEnabled || v3SigningEnabled) {
-            // sign version 1
-            File outputApk = new File(TMP_DIR_PATH + File.separator + "out_" + apkName);
-
-            apkSignerBuilder = new ApkSigner.Builder(signerConfigs, true)
-                    .setInputApk(apk)
-                    .setOutputApk(outputApk)
-                    .setInputBin(tmpBin);
-            apkSigner = apkSignerBuilder.build();
-            apkSigner.addSignV1ToApk();
-
-            // generate v2 v3
-            apkSignerBuilder =
-                    new ApkSigner.Builder(new ArrayList<>(0), true)
-                            .setInputApk(outputApk)
-                            .setOutputBin(tmpBin)
-                            .setOtherSignersSignaturesPreserved(false)
-                            .setV1SigningEnabled(true)
-                            .setV2SigningEnabled(v2SigningEnabled)
-                            .setV3SigningEnabled(v3SigningEnabled)
-                            .setV4SigningEnabled(false)
-                            .setForceSourceStampOverwrite(false)
-                            .setVerityEnabled(false)
-                            .setV4ErrorReportingEnabled(false)
-                            .setDebuggableApkPermitted(debuggableApkPermitted)
-                            .setSigningCertificateLineage(null);
-            apkSigner = apkSignerBuilder.build();
-            apkSigner.getContentDigestsV2V3Cafebazaar();
-
-            apkSignerBuilder =
-                    new ApkSigner.Builder(signerConfigs)
-                            .setInputBin(tmpBin)
-                            .setOutputBin(tmpBin)
-                            .setOtherSignersSignaturesPreserved(false)
-                            .setV1SigningEnabled(true)
-                            .setV2SigningEnabled(v2SigningEnabled)
-                            .setV3SigningEnabled(v3SigningEnabled)
-                            .setV4SigningEnabled(false)
-                            .setForceSourceStampOverwrite(false)
-                            .setVerityEnabled(false)
-                            .setV4ErrorReportingEnabled(false)
-                            .setDebuggableApkPermitted(debuggableApkPermitted)
-                            .setSigningCertificateLineage(null);
-            if (minSdkVersionSpecified) {
-                apkSignerBuilder.setMinSdkVersion(minSdkVersion);
-            }
-            apkSigner = apkSignerBuilder.build();
-
-            apkSigner.signContentDigestsV2V3Cafebazaar();
-
-            appendFiles(tmpBin, binV2V3);
-        }
     }
 
     private static void signBundle(String[] params) throws Exception {
@@ -539,15 +354,12 @@ public class BundleSignerTool {
             return;
         }
 
-        // params
         String bundlePath = null;
         String binFilePath = null;
         String outputPath = null;
 
-        // parse params
         OptionsParser optionsParser = new OptionsParser(params);
         String optionName;
-
         while ((optionName = optionsParser.nextOption()) != null) {
 
             switch (optionName) {
@@ -595,67 +407,6 @@ public class BundleSignerTool {
         SignBundleCommand command = commandBuilder.build();
         command.execute();
 
-    }
-
-    private static File loadDefaultKeyStore() throws IOException {
-        String keyStoreName = "default.keystore";
-        InputStream inputStream = ApkSigner.class.getClassLoader().getResourceAsStream(keyStoreName);
-        File keyStore = new File(BundleSignerTool.TMP_DIR_PATH + File.separator + keyStoreName);
-        Files.copy(inputStream, keyStore.toPath());
-        return keyStore;
-    }
-
-    private static void generateFinalBinFile(File binV1, File binV2V3, File finalBin, boolean v2Enabled,
-                                             boolean v3Enabled) throws IOException {
-        PrintWriter writer = new PrintWriter(new FileWriter(finalBin));
-        writer.println("version: 0.1.4");
-        writer.println("v2:" + v2Enabled + ",v3:" + v3Enabled);
-        if (!v2Enabled && !v3Enabled) {
-            BufferedReader reader = new BufferedReader(new FileReader(binV1));
-
-            String line;
-            int lineCounter = 0;
-            String apkName;
-            while ((line = reader.readLine()) != null) {
-
-                if (lineCounter == 0) {
-                    File apk = new File(line);
-                    apkName = apk.getName();
-                    writer.println(apkName);
-                } else {
-                    writer.println(line);
-                }
-                lineCounter = (lineCounter + 1) % 2;
-            }
-
-            reader.close();
-            writer.close();
-        } else {
-            BufferedReader readerV1 = new BufferedReader(new FileReader(binV1));
-            BufferedReader readerV2V3 = new BufferedReader(new FileReader(binV2V3));
-
-            String lineV1;
-            String lineV2V3;
-            int lineCounter = 0;
-            String apkName;
-
-            while ((lineV1 = readerV1.readLine()) != null && (lineV2V3 = readerV2V3.readLine()) != null) {
-                if (lineCounter == 0) {
-                    File apk = new File(lineV1);
-                    apkName = apk.getName();
-                    writer.println(apkName);
-                } else {
-                    writer.println(lineV1);
-                    writer.println(lineV2V3);
-                }
-
-                lineCounter = (lineCounter + 1) % 2;
-            }
-
-            readerV1.close();
-            readerV2V3.close();
-            writer.close();
-        }
     }
 
     private static ApkSigner.SignerConfig getSignerConfig(
