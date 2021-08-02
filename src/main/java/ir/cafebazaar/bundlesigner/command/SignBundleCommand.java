@@ -101,7 +101,6 @@ public class SignBundleCommand {
     private void extractAndSignApks(String apksPath) throws Exception {
         ZipFile apkZip = new ZipFile(apksPath);
         apkZip.extractAll(TMP_DIR_PATH);
-
         List<FileHeader> apkSetEntries = apkZip.getFileHeaders();
 
         for (FileHeader apkSetEntry : apkSetEntries) {
