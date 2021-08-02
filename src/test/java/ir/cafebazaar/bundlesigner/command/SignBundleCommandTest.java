@@ -15,6 +15,8 @@ import static org.junit.Assert.assertFalse;
 public class SignBundleCommandTest {
 
     private static final String outputDir = "signCommandOutput";
+    private static final String testResourcesPath = "ir/cafebazaar/bundlesigner/";
+
 
     @Before
     public void setUp() {
@@ -38,8 +40,8 @@ public class SignBundleCommandTest {
     public void testExecuteGeneratesExpectedArtifacts() throws Exception {
         String bundleFileName = "bundle";
 
-        String bundlePath = Objects.requireNonNull(getClass().getClassLoader().getResource(String.format("ir.cafebazaar.bundlesigner/%s.aab", bundleFileName))).getPath();
-        String binFilePath = Objects.requireNonNull(getClass().getClassLoader().getResource(String.format("ir.cafebazaar.bundlesigner/%s.bin", bundleFileName))).getPath();
+        String bundlePath = Objects.requireNonNull(getClass().getClassLoader().getResource(String.format(testResourcesPath + "%s.aab", bundleFileName))).getPath();
+        String binFilePath = Objects.requireNonNull(getClass().getClassLoader().getResource(String.format(testResourcesPath + "%s.bin", bundleFileName))).getPath();
 
         SignBundleCommand.Builder builder = new SignBundleCommand.Builder();
         builder.setBundle(bundlePath).setBinFile(binFilePath).setOutputPath(outputDir);

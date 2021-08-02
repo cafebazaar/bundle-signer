@@ -234,7 +234,9 @@ public class GenBinCommand {
 
     private void generateFinalBinFile(File binV1, File binV2V3) throws IOException {
         PrintWriter writer = new PrintWriter(new FileWriter(bin));
-        writer.println("version: 0.1.5");
+
+        String implementationVersion = getClass().getPackage().getImplementationVersion();
+        writer.println(String.format("version: %s", implementationVersion));
         writer.println("v2:" + signV2Enabled + ",v3:" + signV3Enabled);
         if (!signV2Enabled && !signV3Enabled) {
             BufferedReader reader = new BufferedReader(new FileReader(binV1));
