@@ -51,7 +51,7 @@ import java.util.*;
  */
 public class BundleSignerTool {
 
-    private static final String VERSION = "0.1";
+    private static final String VERSION = BundleSignerTool.class.getPackage().getImplementationVersion();
     private static final String HELP_PAGE_GENERAL = "/help.txt";
     private static final String HELP_PAGE_GET_CONTENT_DIGESTS = "/help_get_content_digests.txt";
     private static final String HELP_PAGE_SIGN_BUNDLE = "/help_sign_bundle.txt";
