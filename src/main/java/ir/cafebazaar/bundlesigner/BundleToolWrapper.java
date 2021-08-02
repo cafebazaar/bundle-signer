@@ -6,6 +6,7 @@ import com.android.tools.build.bundletool.device.DdmlibAdbServer;
 import com.android.tools.build.bundletool.flags.FlagParser;
 import com.android.tools.build.bundletool.flags.ParsedFlags;
 import ir.cafebazaar.apksig.ApkSigner;
+import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,12 +18,16 @@ import java.util.ArrayList;
 public class BundleToolWrapper {
 
     private static File keyStore;
+    private static final Logger logger = Logger.getLogger(String.valueOf(BundleToolWrapper.class));
+
 
     static {
         try {
             keyStore = loadDefaultKeyStore();
+            logger.info("loaded keystore.");
         } catch (IOException e) {
             e.printStackTrace();
+            logger.info(e.getStackTrace());
         }
     }
 
@@ -66,6 +71,7 @@ public class BundleToolWrapper {
         } catch (UncheckedIOException e) {
             throw new BundleToolIOException(e.getMessage());
         }
+        logger.info(String.format("Built apkset. Mode is %s", universalMode));
         return apksPath;
     }
 

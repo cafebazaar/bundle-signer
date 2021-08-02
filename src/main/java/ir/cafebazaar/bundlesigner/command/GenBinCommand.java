@@ -1,9 +1,11 @@
 package ir.cafebazaar.bundlesigner.command;
 
 import ir.cafebazaar.apksig.ApkSigner;
+import ir.cafebazaar.bundlesigner.BundleSignerTool;
 import ir.cafebazaar.bundlesigner.BundleToolWrapper;
 import net.lingala.zip4j.ZipFile;
 import net.lingala.zip4j.model.FileHeader;
+import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -22,6 +24,9 @@ public class GenBinCommand {
     private final int minSdkVersion;
     private final boolean minSdkVersionSpecified;
     private final boolean verbose;
+
+    private static final Logger logger = Logger.getLogger(String.valueOf(GenBinCommand.class));
+
 
     private GenBinCommand(File bundle, File bin, boolean signV2Enabled, boolean signV3Enabled, boolean permitted,
                          List<ApkSigner.SignerConfig> signerConfigs, int version, boolean minSdkVersionSpecified,
@@ -110,6 +115,7 @@ public class GenBinCommand {
     }
 
     public void execute() throws Exception {
+        logger.info("started genbin command.");
         String apksPath = BundleToolWrapper.buildApkSet(bundle, TMP_DIR_PATH, false);
         String universalPath = BundleToolWrapper.buildApkSet(bundle, TMP_DIR_PATH, true);
 
@@ -125,12 +131,14 @@ public class GenBinCommand {
         if (verbose) {
             System.out.println("Digest content generated");
         }
-
+        logger.info("File generated.");
     }
 
     private void extractAndSignApkSet(String apksPath, File binV1, File binV2V3) throws Exception {
         ZipFile apkZip = new ZipFile(apksPath);
         apkZip.extractAll(TMP_DIR_PATH);
+        logger.info("Extracted apk set.");
+
         List<FileHeader> apkSetEntries = apkZip.getFileHeaders();
 
         for (FileHeader apkSetEntry : apkSetEntries) {

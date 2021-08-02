@@ -1,9 +1,11 @@
 package ir.cafebazaar.bundlesigner.command;
 
 import ir.cafebazaar.apksig.ApkSigner;
+import ir.cafebazaar.bundlesigner.BundleSignerTool;
 import ir.cafebazaar.bundlesigner.BundleToolWrapper;
 import net.lingala.zip4j.ZipFile;
 import net.lingala.zip4j.model.FileHeader;
+import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.util.*;
@@ -21,6 +23,8 @@ public class SignBundleCommand {
 
     private boolean signV2Enabled;
     private boolean signV3Enabled;
+
+    private static final Logger logger = Logger.getLogger(String.valueOf(SignBundleCommand.class));
 
     private SignBundleCommand(File bundle, File binFile, String outputPath) {
         this.bundle = bundle;
@@ -87,9 +91,12 @@ public class SignBundleCommand {
                 expectedSignVersion = 1;
             }
         }
+
+        logger.info("processed sign file.");
     }
 
     public void execute() throws Exception {
+        logger.info("Started sign command.");
         processBinFile();
         String apksPath = BundleToolWrapper.buildApkSet(bundle, outputPath, false);
         String universalPath = BundleToolWrapper.buildApkSet(bundle, TMP_DIR_PATH, true);
@@ -179,5 +186,7 @@ public class SignBundleCommand {
 
             }
         }
+
+        logger.info(String.format("Signed %s", apksPath));
     }
 }
