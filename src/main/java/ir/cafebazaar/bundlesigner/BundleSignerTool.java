@@ -19,11 +19,6 @@
 
 package ir.cafebazaar.bundlesigner;
 
-import com.android.tools.build.bundletool.commands.BuildApksCommand;
-import com.android.tools.build.bundletool.device.AdbServer;
-import com.android.tools.build.bundletool.device.DdmlibAdbServer;
-import com.android.tools.build.bundletool.flags.FlagParser;
-import com.android.tools.build.bundletool.flags.ParsedFlags;
 import com.android.tools.build.bundletool.model.exceptions.InvalidBundleException;
 import ir.cafebazaar.apksig.ApkSigner;
 import ir.cafebazaar.apksig.ApkVerifier;
@@ -31,6 +26,7 @@ import ir.cafebazaar.apksig.apk.ApkFormatException;
 import ir.cafebazaar.apksig.apk.MinSdkVersionException;
 import ir.cafebazaar.bundlesigner.command.GenBinCommand;
 import ir.cafebazaar.bundlesigner.command.SignBundleCommand;
+import org.apache.log4j.Logger;
 import org.conscrypt.OpenSSLProvider;
 import shadow.bundletool.com.android.utils.FileUtils;
 
@@ -47,8 +43,6 @@ import java.security.interfaces.DSAParams;
 import java.security.interfaces.ECKey;
 import java.security.interfaces.RSAKey;
 import java.util.*;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 
 /**
@@ -64,6 +58,9 @@ public class BundleSignerTool {
     private static final String HELP_PAGE_VERIFY = "/help_verify.txt";
 
     public static String TMP_DIR_PATH;
+    private static boolean keepTmp = false;
+    private static final Logger logger = Logger.getLogger(String.valueOf(BundleSignerTool.class));
+
 
     private static MessageDigest sha256 = null;
     private static MessageDigest sha1 = null;
@@ -71,20 +68,38 @@ public class BundleSignerTool {
 
 
     static {
+        Locale.setDefault(new Locale("en"));
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+        logger.info(String.format("Set up project, java version: %s, vendor: %s, vm: %s, jre: %s, f-memory: %s," +
+                        " m-memory: %s",
+                System.getProperty("java.version"),
+                System.getProperty("java.vendor"),
+                System.getProperty("java.vm.name"),
+                System.getProperty("java.runtime.name"),
+                Runtime.getRuntime().freeMemory(),
+                Runtime.getRuntime().maxMemory()));
         try {
             Path tmpDirectory = Files.createTempDirectory("bundle_signer");
             TMP_DIR_PATH = tmpDirectory.toAbsolutePath().toString();
             Runtime.getRuntime().addShutdownHook(
                     new Thread(() -> {
                         try {
+                            if(keepTmp){
+                                logger.info("Process finished, tmp is kept.");
+                                System.exit(0);
+                            }
                             FileUtils.deleteRecursivelyIfExists(tmpDirectory.toFile());
-                        } catch (IOException e) {
-                            System.out.println("Warning: Failed to remove tmp dir.");
+                            logger.info("Process finished.");
+
+                        } catch (Exception e) {
+                            System.out.println("Warning: Process Interrupted.");
+                            logger.info(e.getStackTrace());
                             System.exit(8);
                         }
                     }));
         } catch (Exception e) {
             System.err.println(e.getMessage());
+            logger.info(e.getStackTrace());
             System.exit(1);
         }
     }
@@ -223,6 +238,9 @@ public class BundleSignerTool {
                 case "v":
                 case "verbose":
                     verbose = optionsParser.getOptionalBooleanValue(true);
+                    break;
+                case "keep-tmp":
+                    keepTmp = optionsParser.getOptionalBooleanValue(true);
                     break;
                 case "ks":
                     signerParams.setKeystoreFile(optionsParser.getRequiredValue("KeyStore file"));
@@ -372,6 +390,9 @@ public class BundleSignerTool {
                     break;
                 case "bin":
                     binFilePath = optionsParser.getRequiredValue("Path to bin file");
+                    break;
+                case "keep-tmp":
+                    keepTmp = optionsParser.getOptionalBooleanValue(true);
                     break;
                 case "out":
                     outputPath = optionsParser.getRequiredValue("Output files path");
