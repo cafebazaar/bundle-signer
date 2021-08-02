@@ -1,15 +1,11 @@
 package ir.cafebazaar.bundlesigner.command;
 
 import ir.cafebazaar.apksig.ApkSigner;
-import ir.cafebazaar.apksig.apk.ApkFormatException;
 import ir.cafebazaar.bundlesigner.BundleToolWrapper;
 import net.lingala.zip4j.ZipFile;
 import net.lingala.zip4j.model.FileHeader;
 
 import java.io.*;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -119,11 +115,10 @@ public class GenBinCommand {
 
         File binV1 = new File(TMP_DIR_PATH + File.separator + "binv1");
         File binV2V3 = new File(TMP_DIR_PATH + File.separator + "binv2_v3");
-        File tmpBin = new File(TMP_DIR_PATH + File.separator + "tmp_bin");
 
-        extractAndSignApkSet(apksPath, binV1, binV2V3, tmpBin);
+        extractAndSignApkSet(apksPath, binV1, binV2V3);
 
-        extractAndSignApkSet(universalPath, binV1, binV2V3, tmpBin);
+        extractAndSignApkSet(universalPath, binV1, binV2V3);
 
         generateFinalBinFile(binV1, binV2V3);
 
@@ -133,7 +128,7 @@ public class GenBinCommand {
 
     }
 
-    private void extractAndSignApkSet(String apksPath, File binV1, File binV2V3, File tmpBin) throws Exception {
+    private void extractAndSignApkSet(String apksPath, File binV1, File binV2V3) throws Exception {
         ZipFile apkZip = new ZipFile(apksPath);
         apkZip.extractAll(TMP_DIR_PATH);
         List<FileHeader> apkSetEntries = apkZip.getFileHeaders();
@@ -148,18 +143,15 @@ public class GenBinCommand {
             String apkName = apkSetEntry.getFileName().split(".apk")[0] + ".apk";
             apkName = apkName.replace("/", "_");
 
-            calculateSignOfApk(apkName, binV1, binV2V3, tmpBin, apk);
-
+            calculateSignOfApk(apkName, binV1, binV2V3, apk);
         }
     }
 
-    private void calculateSignOfApk(String apkName, File binV1, File binV2V3, File tmpBin, File apk) throws IOException,
-            ApkFormatException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, ClassNotFoundException {
+    private void calculateSignOfApk(String apkName, File binV1, File binV2V3, File apk) throws Exception {
 
         ApkSigner.Builder apkSignerBuilder =
                 new ApkSigner.Builder(new ArrayList<>(0), true)
                         .setInputApk(apk)
-                        .setOutputBin(tmpBin)
                         .setOtherSignersSignaturesPreserved(false)
                         .setV1SigningEnabled(true)
                         .setV2SigningEnabled(signV2Enabled)
@@ -170,24 +162,25 @@ public class GenBinCommand {
         }
 
         ApkSigner apkSigner = apkSignerBuilder.build();
-        apkSigner.genV1Bin();
-
+        String digest = apkSigner.genV1Bin();
+    
         apkSignerBuilder = new ApkSigner.Builder(signerConfigs)
-                .setInputBin(tmpBin)
-                .setOutputBin(tmpBin);
+                .setSignDigest(apk.getPath(), digest);
 
         apkSigner = apkSignerBuilder.build();
-        apkSigner.signV1();
-        appendFiles(tmpBin, binV1);
+        String signV1 = apkSigner.signV1();
+        appendSignToFile(binV1, apk.getName(), signV1);
 
-        if (signV2Enabled || signV2Enabled) {
+
+        if (signV2Enabled || signV3Enabled) {
             // sign version 1
             File outputApk = new File(TMP_DIR_PATH + File.separator + "out_" + apkName);
+
 
             apkSignerBuilder = new ApkSigner.Builder(signerConfigs, true)
                     .setInputApk(apk)
                     .setOutputApk(outputApk)
-                    .setInputBin(tmpBin);
+                    .setSignDigest(apk.getPath(), signV1);
             apkSigner = apkSignerBuilder.build();
             apkSigner.addSignV1ToApk();
 
@@ -195,7 +188,6 @@ public class GenBinCommand {
             apkSignerBuilder =
                     new ApkSigner.Builder(new ArrayList<>(0), true)
                             .setInputApk(outputApk)
-                            .setOutputBin(tmpBin)
                             .setOtherSignersSignaturesPreserved(false)
                             .setV1SigningEnabled(true)
                             .setV2SigningEnabled(signV2Enabled)
@@ -207,12 +199,11 @@ public class GenBinCommand {
                             .setDebuggableApkPermitted(debuggableApkPermitted)
                             .setSigningCertificateLineage(null);
             apkSigner = apkSignerBuilder.build();
-            apkSigner.getContentDigestsV2V3Cafebazaar();
+            String digestV2V3 = apkSigner.getContentDigestsV2V3Cafebazaar();
 
             apkSignerBuilder =
                     new ApkSigner.Builder(signerConfigs)
-                            .setInputBin(tmpBin)
-                            .setOutputBin(tmpBin)
+                            .setSignDigest(outputApk.getPath(), digestV2V3)
                             .setOtherSignersSignaturesPreserved(false)
                             .setV1SigningEnabled(true)
                             .setV2SigningEnabled(signV2Enabled)
@@ -228,29 +219,22 @@ public class GenBinCommand {
             }
             apkSigner = apkSignerBuilder.build();
 
-            apkSigner.signContentDigestsV2V3Cafebazaar();
+            String signV2V3 = apkSigner.signContentDigestsV2V3Cafebazaar();
 
-            appendFiles(tmpBin, binV2V3);
+            appendSignToFile(binV2V3, apk.getName(), signV2V3);
         }
     }
 
-    private void appendFiles(File src, File dest) throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(src));
-        PrintWriter writer = new PrintWriter(new FileWriter(dest, true));
-
-        String line;
-        while ((line = reader.readLine()) != null) {
-            writer.println(line);
-        }
-
-        reader.close();
+    private void appendSignToFile(File file, String apkName, String sign) throws IOException {
+        PrintWriter writer = new PrintWriter(new FileWriter(file, true));
+        writer.println(apkName);
+        writer.println(sign);
         writer.close();
-
     }
 
     private void generateFinalBinFile(File binV1, File binV2V3) throws IOException {
         PrintWriter writer = new PrintWriter(new FileWriter(bin));
-        writer.println("version: 0.1.4");
+        writer.println("version: 0.1.5");
         writer.println("v2:" + signV2Enabled + ",v3:" + signV3Enabled);
         if (!signV2Enabled && !signV3Enabled) {
             BufferedReader reader = new BufferedReader(new FileReader(binV1));

@@ -199,13 +199,13 @@ public class ApkSigner {
         mSigningCertificateLineage = signingCertificateLineage;
     }
 
-    public void genV1Bin()
+    public String genV1Bin()
             throws IOException {
         Closeable in = null;
         DataSource inputApk;
         try {
             if (mInputApkFile != null) {
-                RandomAccessFile inputFile = null;
+                RandomAccessFile inputFile;
                 inputFile = new RandomAccessFile(mInputApkFile, "r");
                 in = inputFile;
                 inputApk = DataSources.asDataSource(inputFile);
@@ -217,7 +217,8 @@ public class ApkSigner {
             try {
                 try {
                     //  Block of code to try
-                    genV1Bin(inputApk);
+                    String sign = genV1Bin(inputApk);
+                    return sign;
                 } catch (Exception e) {
                     //  Block of code to handle errors
                     e.printStackTrace();
@@ -233,9 +234,10 @@ public class ApkSigner {
                 in.close();
             }
         }
+        return null;
     }
 
-    private void genV1Bin(DataSource inputApk)
+    private String genV1Bin(DataSource inputApk)
             throws IOException, ApkFormatException, NoSuchAlgorithmException, InvalidKeyException,
             SignatureException {
         DataSink outputApkOut = DataSinks.newInMemoryDataSink();
@@ -515,20 +517,22 @@ public class ApkSigner {
 
         List<BinaryFormat> binaryFormatOutputGroup = new ArrayList<>();
         binaryFormatOutputGroup.add(signV1Output);
-        saveOutputBinFile(binaryFormatOutputGroup);
+        return binaryFormatOutputGroup.get(0).content;
     }
 
-    public void signV1() {
+    public String signV1() {
 
         try {
-            doSignV1();
+            String sign = doSignV1();
+            return sign;
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+        return null;
     }
 
-    private void doSignV1()
+    private String doSignV1()
             throws IOException, NoSuchAlgorithmException, InvalidKeyException,
             SignatureException, ClassNotFoundException {
 
@@ -565,7 +569,7 @@ public class ApkSigner {
             outputBinaryItem.content = BinaryFormat.toBase64String(outputJarSignatureRequest);
             outputBinaryList.add(outputBinaryItem);
         }
-        saveOutputBinFile(outputBinaryList);
+        return outputBinaryList.get(0).content;
     }
 
     public void addSignV1ToApk() {
@@ -577,8 +581,7 @@ public class ApkSigner {
 
     }
 
-    private void addSignV1ToApk(File mOutputApkFile)
-            throws IOException, ApkFormatException, InvalidKeyException,
+    private void addSignV1ToApk(File mOutputApkFile) throws IOException, ApkFormatException, InvalidKeyException,
             SignatureException, ClassNotFoundException {
 
         List<BinaryFormat> inputBinaryList;
@@ -598,7 +601,6 @@ public class ApkSigner {
 
             DataSource inputApk;
             DataSink outputApkOut;
-            DataSource outputApkIn;
 
 
             RandomAccessFile inputFile = new RandomAccessFile(inputApkFile, "r");
@@ -609,7 +611,6 @@ public class ApkSigner {
             out = outputFile;
             outputFile.setLength(0);
             outputApkOut = DataSinks.asDataSink(outputFile);
-            outputApkIn = DataSources.asDataSource(outputFile);
 
             ApkSignerEngine.OutputJarSignatureRequest outputJarSignatureRequest =
                     (ApkSignerEngine.OutputJarSignatureRequest) BinaryFormat.fromBase64String(inputBinary.content);
@@ -959,7 +960,7 @@ public class ApkSigner {
         }
     }
 
-    public void getContentDigestsV2V3Cafebazaar()
+    public String getContentDigestsV2V3Cafebazaar()
             throws IOException, ApkFormatException, NoSuchAlgorithmException, InvalidKeyException,
             SignatureException, IllegalStateException {
         Closeable in = null;
@@ -976,18 +977,18 @@ public class ApkSigner {
             }
             Pair<Map<ContentDigestAlgorithm, byte[]>, Integer> contentDigestsAndMinSdkVersion =
                     getContentDigestsV2V3Cafebazaar(inputApk);
-            List<BinaryFormat> binaryFormatOutputGroup = new ArrayList<>();
             SerializableContentDigestsAndMinSdkVersion serializableContentDigestsAndMinSdkVersion =
                     new SerializableContentDigestsAndMinSdkVersion(contentDigestsAndMinSdkVersion);
             BinaryFormat binaryFormatOutputItem =
                     new BinaryFormat(mInputApkFile.getAbsolutePath(), serializableContentDigestsAndMinSdkVersion);
-            binaryFormatOutputGroup.add(binaryFormatOutputItem);
-            saveOutputBinFile(binaryFormatOutputGroup);
+
+            return binaryFormatOutputItem.content;
         } finally {
             if (in != null) {
                 in.close();
             }
         }
+
     }
 
     private Pair<Map<ContentDigestAlgorithm, byte[]>, Integer> getContentDigestsV2V3Cafebazaar(
@@ -1098,10 +1099,16 @@ public class ApkSigner {
         return Pair.of(contentDigests, _minSdkVersion);
     }
 
-    public void signContentDigestsV2V3Cafebazaar()
+    public String signContentDigestsV2V3Cafebazaar()
             throws IOException, ApkFormatException, NoSuchAlgorithmException, InvalidKeyException,
-            SignatureException, IllegalStateException, FileNotFoundException, ClassNotFoundException {
-        List<BinaryFormat> binaryFormatInputGroup = loadInputBinFile();
+            SignatureException, IllegalStateException, ClassNotFoundException {
+
+        List<BinaryFormat> binaryFormatInputGroup;
+        if(binaryFormatItems != null)
+            binaryFormatInputGroup = binaryFormatItems;
+        else
+            binaryFormatInputGroup = loadInputBinFile();
+
         List<BinaryFormat> binaryFormatOutputGroup = new ArrayList<>();
         for (BinaryFormat binaryFormatInputItem : binaryFormatInputGroup) {
             SerializableContentDigestsAndMinSdkVersion serializableContentDigestsAndMinSdkVersion =
@@ -1114,7 +1121,7 @@ public class ApkSigner {
             BinaryFormat binaryFormatOutputItem = new BinaryFormat(identifier, serializableApkSigningBlock);
             binaryFormatOutputGroup.add(binaryFormatOutputItem);
         }
-        saveOutputBinFile(binaryFormatOutputGroup);
+        return binaryFormatOutputGroup.get(0).content;
     }
 
     private byte[] signContentDigestsV2V3Cafebazaar(
