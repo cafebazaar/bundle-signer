@@ -8,6 +8,7 @@ import net.lingala.zip4j.model.FileHeader;
 import org.apache.log4j.Logger;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static ir.cafebazaar.bundlesigner.BundleSignerTool.TMP_DIR_PATH;
@@ -63,7 +64,7 @@ public class SignBundleCommand {
     }
 
     private void processBinFile() throws IOException {
-        BufferedReader binReader = new BufferedReader(new FileReader(binFile));
+        BufferedReader binReader = new BufferedReader(new InputStreamReader(new FileInputStream(binFile), StandardCharsets.UTF_8));
         binReader.readLine(); // skip bundle signer version line
         String line = binReader.readLine();
 

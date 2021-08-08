@@ -141,29 +141,30 @@ public class BundleSignerTool {
                             "Unsupported command: " + cmd + ". See --help for supported commands");
             }
         } catch (ParameterException | OptionsParser.OptionsException e) {
-            exitMessage = e.getMessage();
+            exitMessage = Arrays.toString(e.getStackTrace());
             exitCode = 2;
         } catch (MinSdkVersionException e) {
             exitMessage = "Failed to determine APK's minimum supported platform version"
                     + ". Use --min-sdk-version to override";
             exitCode = 3;
         } catch (InvalidBundleException e) {
-            exitMessage = e.getMessage();
+            exitMessage = Arrays.toString(e.getStackTrace());
             exitCode = 5;
         } catch (BundleToolIOException e) {
-            exitMessage = e.getMessage();
+            exitMessage = Arrays.toString(e.getStackTrace());
             exitCode = 6;
 
         } catch (ApkFormatException e) {
-            exitMessage = e.getMessage();
+            exitMessage = Arrays.toString(e.getStackTrace());
             exitCode = 7;
 
         } catch (RuntimeException e) {
-            exitMessage = e.getMessage();
+            exitMessage = Arrays.toString(e.getStackTrace());
             exitCode = 4;
         } finally {
             if (!exitMessage.isEmpty())
                 System.err.println(exitMessage);
+                logger.info(exitMessage);
             System.exit(exitCode);
         }
     }
