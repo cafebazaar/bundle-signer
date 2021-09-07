@@ -191,7 +191,7 @@ public class BundleSignerTool {
 
         String binFilePath = null;
         String bundlePath = null;
-        boolean verbose = false;
+        boolean verbose = true;
         boolean v2SigningEnabled = false;
         boolean v3SigningEnabled = false;
         boolean debuggableApkPermitted = true;
@@ -311,7 +311,8 @@ public class BundleSignerTool {
         }
 
         if (!Files.exists(new File(binFilePath).toPath())) {
-            throw new ParameterException("Input bundle file does not exist");
+            System.out.println("Output directory to save Bin file doesn't exist, Creating it ...");
+            Files.createDirectories(new File(binFilePath).toPath());
         }
 
         if (!signerParams.isEmpty()) {

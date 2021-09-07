@@ -129,7 +129,7 @@ public class GenBinCommand {
         generateFinalBinFile(binV1, binV2V3);
 
         if (verbose) {
-            System.out.println("Digest content generated");
+            System.out.println(String.format("Digest content generated. Bin file saved in %s .", bin.getPath()));
         }
         logger.info("File generated.");
     }
