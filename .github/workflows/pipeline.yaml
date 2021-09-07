@@ -32,7 +32,7 @@ jobs:
           name: test_resources
           path: .github/workflows/test_resources/
 
-  test-generate-sing-file:
+  test-generate-sign-file:
     strategy:
       max-parallel: 12
       matrix:

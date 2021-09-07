@@ -1,13 +1,13 @@
 package ir.cafebazaar.bundlesigner.command;
 
 import ir.cafebazaar.apksig.ApkSigner;
-import ir.cafebazaar.bundlesigner.BundleSignerTool;
 import ir.cafebazaar.bundlesigner.BundleToolWrapper;
 import net.lingala.zip4j.ZipFile;
 import net.lingala.zip4j.model.FileHeader;
 import org.apache.log4j.Logger;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -129,7 +129,7 @@ public class GenBinCommand {
         generateFinalBinFile(binV1, binV2V3);
 
         if (verbose) {
-            System.out.println("Digest content generated");
+            System.out.println(String.format("Digest content generated. Bin file saved in %s .", bin.getPath()));
         }
         logger.info("File generated.");
     }
@@ -234,20 +234,20 @@ public class GenBinCommand {
     }
 
     private void appendSignToFile(File file, String apkName, String sign) throws IOException {
-        PrintWriter writer = new PrintWriter(new FileWriter(file, true));
+        PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file, true), StandardCharsets.UTF_8));
         writer.println(apkName);
         writer.println(sign);
         writer.close();
     }
 
     private void generateFinalBinFile(File binV1, File binV2V3) throws IOException {
-        PrintWriter writer = new PrintWriter(new FileWriter(bin));
+        PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(bin, true), StandardCharsets.UTF_8));
 
         String implementationVersion = getClass().getPackage().getImplementationVersion();
         writer.println(String.format("version: %s", implementationVersion));
         writer.println("v2:" + signV2Enabled + ",v3:" + signV3Enabled);
         if (!signV2Enabled && !signV3Enabled) {
-            BufferedReader reader = new BufferedReader(new FileReader(binV1));
+            BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(binV1), StandardCharsets.UTF_8));
 
             String line;
             int lineCounter = 0;
@@ -267,8 +267,8 @@ public class GenBinCommand {
             reader.close();
             writer.close();
         } else {
-            BufferedReader readerV1 = new BufferedReader(new FileReader(binV1));
-            BufferedReader readerV2V3 = new BufferedReader(new FileReader(binV2V3));
+            BufferedReader readerV1 = new BufferedReader(new InputStreamReader(new FileInputStream(binV1), StandardCharsets.UTF_8));
+            BufferedReader readerV2V3 = new BufferedReader(new InputStreamReader(new FileInputStream(binV2V3), StandardCharsets.UTF_8));
 
             String lineV1;
             String lineV2V3;
