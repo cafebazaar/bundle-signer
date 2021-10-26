@@ -12,7 +12,7 @@ file for generating application packages.
 See [the Farsi document](https://developers.cafebazaar.ir/fa/guidelines/feature/app_bundle#).
 
 # Usage
-Bundle signer is a command-line tool. You need to install **Java 9 or above** to run this program. Following example 
+Bundle signer is a command-line tool. You need to install **Java 8 or above** to run this program. Following example 
 shows how to generate signed binary file of your bundle application assuming you are using Java keystore to sign APK
 files of your application:
 ```sh  

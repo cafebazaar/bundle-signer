@@ -170,7 +170,6 @@ public class BundleSignerTool {
         } finally {
             if (!exitMessage.isEmpty())
                 System.err.println(exitMessage);
-                logger.info(exitMessage);
             System.exit(exitCode);
         }
     }
