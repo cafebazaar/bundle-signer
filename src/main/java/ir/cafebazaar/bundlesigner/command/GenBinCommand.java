@@ -241,7 +241,7 @@ public class GenBinCommand {
     }
 
     private void generateFinalBinFile(File binV1, File binV2V3) throws IOException {
-        PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(bin, true), StandardCharsets.UTF_8));
+        PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(bin, false), StandardCharsets.UTF_8));
 
         String implementationVersion = getClass().getPackage().getImplementationVersion();
         writer.println(String.format("version: %s", implementationVersion));

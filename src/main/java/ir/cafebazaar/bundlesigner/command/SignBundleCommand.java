@@ -143,11 +143,21 @@ public class SignBundleCommand {
 
             File apk = new File(TMP_DIR_PATH + File.separator + apkSetEntry.getFileName());
             List<ApkSigner.SignerConfig> signerConfigs = new ArrayList<>(0);
+
+            String apkDigest;
+            try{
+                apkDigest = apkSignV1.get(apkName);
+            }
+            catch (Exception e){
+                String msg = String.format("Digest of %s not found in bin file.", apkName);
+                throw new SignBundleException(msg);
+            }
+
             ApkSigner.Builder apkSignerBuilder =
                     new ApkSigner.Builder(signerConfigs, true)
                             .setInputApk(apk)
                             .setOutputApk(v1SignedApk)
-                            .setSignDigest(apk.getPath(), apkSignV1.get(apkName));
+                            .setSignDigest(apk.getPath(), apkDigest);
             apkSignV1.remove(apkName);
 
             ApkSigner apkSigner = apkSignerBuilder.build();
@@ -164,11 +174,19 @@ public class SignBundleCommand {
                     V2V3SignedApk = new File(outputPath + File.separator + apkName);
                 }
 
+                String apkDigestV2V3;
+                try{
+                    apkDigestV2V3 = apkSignV2V3.get(apkName);
+                } catch (Exception e){
+                    String msg = String.format("Digest of %s not found in bin file.", apkName);
+                    throw new SignBundleException(msg);
+                }
+
                 apkSignerBuilder =
                         new ApkSigner.Builder(new ArrayList<>(0), true)
                                 .setInputApk(v1SignedApk)
                                 .setOutputApk(V2V3SignedApk)
-                                .setSignDigest(v1SignedApk.getPath(), apkSignV2V3.get(apkName))
+                                .setSignDigest(v1SignedApk.getPath(), apkDigestV2V3)
                                 .setOtherSignersSignaturesPreserved(false)
                                 .setV1SigningEnabled(false)
                                 .setV2SigningEnabled(signV2Enabled)
