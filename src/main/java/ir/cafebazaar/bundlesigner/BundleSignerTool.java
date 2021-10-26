@@ -26,6 +26,7 @@ import ir.cafebazaar.apksig.apk.ApkFormatException;
 import ir.cafebazaar.apksig.apk.MinSdkVersionException;
 import ir.cafebazaar.bundlesigner.command.GenBinCommand;
 import ir.cafebazaar.bundlesigner.command.SignBundleCommand;
+import ir.cafebazaar.bundlesigner.command.SignBundleException;
 import org.apache.log4j.Logger;
 import org.conscrypt.OpenSSLProvider;
 import shadow.bundletool.com.android.utils.FileUtils;
@@ -141,26 +142,31 @@ public class BundleSignerTool {
                             "Unsupported command: " + cmd + ". See --help for supported commands");
             }
         } catch (ParameterException | OptionsParser.OptionsException e) {
-            exitMessage = Arrays.toString(e.getStackTrace());
+            exitMessage = e.getMessage() + "\n" + Arrays.toString(e.getStackTrace());
             exitCode = 2;
         } catch (MinSdkVersionException e) {
             exitMessage = "Failed to determine APK's minimum supported platform version"
                     + ". Use --min-sdk-version to override";
             exitCode = 3;
         } catch (InvalidBundleException e) {
-            exitMessage = Arrays.toString(e.getStackTrace());
+            exitMessage = e.getMessage() + "\n" + Arrays.toString(e.getStackTrace());
             exitCode = 5;
         } catch (BundleToolIOException e) {
-            exitMessage = Arrays.toString(e.getStackTrace());
+            exitMessage = e.getMessage() + "\n" + Arrays.toString(e.getStackTrace());
             exitCode = 6;
 
         } catch (ApkFormatException e) {
-            exitMessage = Arrays.toString(e.getStackTrace());
+            exitMessage = e.getMessage() + "\n" + Arrays.toString(e.getStackTrace());
             exitCode = 7;
 
+        }catch (SignBundleException e){
+            exitMessage = e.getMessage() + "\n" + Arrays.toString(e.getStackTrace());
+            exitCode = 8;
+
         } catch (RuntimeException e) {
-            exitMessage = Arrays.toString(e.getStackTrace());
+            exitMessage = e.getMessage() + "\n" + Arrays.toString(e.getStackTrace());
             exitCode = 4;
+
         } finally {
             if (!exitMessage.isEmpty())
                 System.err.println(exitMessage);
