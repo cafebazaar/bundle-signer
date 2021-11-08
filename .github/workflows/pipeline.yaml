@@ -59,12 +59,64 @@ jobs:
         run: |
           java -jar bundlesigner.jar genbin --bundle bundle.aab --bin . --key key.pk8 --cert cert.pem --v2-signing-enabled true --v3-signing-enabled false
           (ls bundle.bin && >> /dev/null 2>&1 && echo bin file generated) || exit 1
-          java -jar bundlesigner.jar signbundle --bundle bundle.aab --bin bundle.bin --out .
-          echo "signed bundle"
-          java -jar bundlesigner.jar verify -v universal.apk | head -2 | tail -1
+          mkdir sign_file
+          mv bundle.bin sign_file/${{ matrix.java-version }}_${{ matrix.os }}.bin
+
 
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Generate sign file on windows
         run: |
           java -jar bundlesigner.jar genbin --bundle bundle.aab --bin . --key key.pk8 --cert cert.pem --v2-signing-enabled true --v3-signing-enabled true
           [System.IO.File]::Exists("bundle.bin") ? "echo bin file generated" : "exit 1"
+          mkdir sign_file
+          MOVE bundle.bin sign_file\${{ matrix.java-version }}_${{ matrix.os }}.bin
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: sign_file
+          path: sign_file/
+
+
+  test-sign-bundle:
+    strategy:
+      max-parallel: 12
+      matrix:
+        java-version: [ '8', '17' ]
+        os: [ 'ubuntu-latest' ]
+    needs: test-generate-sign-file
+    runs-on: ${{ matrix.os }}
+
+    steps:
+
+      - name: Download sign info
+        uses: actions/download-artifact@v2
+        with:
+          name: sign_file
+
+      - name: Download test resources
+        uses: actions/download-artifact@v2
+        with:
+          name: test_resources
+
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: ${{ matrix.java-version }}
+          distribution: 'adopt'
+
+      - if: ${{ matrix.java-version != '17' }}
+        name: Generate sign file generated using Java < 17
+        run: |
+          rm 17_*
+          ls
+          for bin_file in *.bin ; do java -jar bundlesigner.jar signbundle --bundle bundle.aab --bin $bin_file --out result && java -jar bundlesigner.jar verify -v result/universal.apk | head -2 | tail -1  && rm -r result ; done
+          echo "signed bundle"
+
+      - if: ${{ matrix.java-version == '17' }}
+        name: Generate sign file generated using Java == 17
+        run: |
+          mkdir bin_files
+          cp 17_* bin_files/
+          ls
+          for bin_file in bin_files/*.bin ; do  java -jar bundlesigner.jar signbundle --bundle bundle.aab --bin $bin_file --out result && rm -r result ; done
+          echo "signed bundle"
