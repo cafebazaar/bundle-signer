@@ -108,7 +108,6 @@ jobs:
         name: Generate sign file generated using Java < 17
         run: |
           rm 17_*
-          ls
           for bin_file in *.bin ; do java -jar bundlesigner.jar signbundle --bundle bundle.aab --bin $bin_file --out result && java -jar bundlesigner.jar verify -v result/universal.apk | head -2 | tail -1  && rm -r result ; done
           echo "signed bundle"
 
@@ -117,6 +116,5 @@ jobs:
         run: |
           mkdir bin_files
           cp 17_* bin_files/
-          ls
           for bin_file in bin_files/*.bin ; do  java -jar bundlesigner.jar signbundle --bundle bundle.aab --bin $bin_file --out result && rm -r result ; done
           echo "signed bundle"
