@@ -29,8 +29,8 @@ public class GenBinCommand {
 
 
     private GenBinCommand(File bundle, File bin, boolean signV2Enabled, boolean signV3Enabled, boolean permitted,
-                         List<ApkSigner.SignerConfig> signerConfigs, int version, boolean minSdkVersionSpecified,
-                         boolean verbose) {
+                          List<ApkSigner.SignerConfig> signerConfigs, int version, boolean minSdkVersionSpecified,
+                          boolean verbose) {
         this.bin = bin;
         this.bundle = bundle;
         this.verbose = verbose;
@@ -96,7 +96,7 @@ public class GenBinCommand {
             return this;
         }
 
-        public GenBinCommand.Builder setVerbose(boolean verbose){
+        public GenBinCommand.Builder setVerbose(boolean verbose) {
             Builder.verbose = verbose;
             return this;
         }
@@ -171,7 +171,7 @@ public class GenBinCommand {
 
         ApkSigner apkSigner = apkSignerBuilder.build();
         String digest = apkSigner.genV1Bin();
-    
+
         apkSignerBuilder = new ApkSigner.Builder(signerConfigs)
                 .setSignDigest(apk.getPath(), digest);
 
@@ -244,7 +244,7 @@ public class GenBinCommand {
         PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(bin, false), StandardCharsets.UTF_8));
 
         String implementationVersion = getClass().getPackage().getImplementationVersion();
-        writer.println(String.format("version: %s", implementationVersion));
+        writer.println(String.format("version: %s;java_version: %s", implementationVersion, System.getProperty("java.version")));
         writer.println("v2:" + signV2Enabled + ",v3:" + signV3Enabled);
         if (!signV2Enabled && !signV3Enabled) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(binV1), StandardCharsets.UTF_8));
