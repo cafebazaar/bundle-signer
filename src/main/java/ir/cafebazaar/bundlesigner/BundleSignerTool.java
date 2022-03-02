@@ -73,7 +73,7 @@ public class BundleSignerTool {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         logger.info(String.format("Set up project, java version: %s, vendor: %s, vm: %s, jre: %s, f-memory: %s," +
                         " m-memory: %s",
-                System.getProperty("java.version"),
+                System.getProperty("java.specification.version"),
                 System.getProperty("java.vendor"),
                 System.getProperty("java.vm.name"),
                 System.getProperty("java.runtime.name"),
