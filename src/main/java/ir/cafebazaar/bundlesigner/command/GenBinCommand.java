@@ -244,7 +244,8 @@ public class GenBinCommand {
         PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(bin, false), StandardCharsets.UTF_8));
 
         String implementationVersion = getClass().getPackage().getImplementationVersion();
-        writer.println(String.format("version: %s;java_version: %s", implementationVersion, System.getProperty("java.version")));
+        writer.println(String.format("version: %s;java_version: %s", implementationVersion,
+                System.getProperty("java.specification.version")));
         writer.println("v2:" + signV2Enabled + ",v3:" + signV3Enabled);
         if (!signV2Enabled && !signV3Enabled) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(binV1), StandardCharsets.UTF_8));
