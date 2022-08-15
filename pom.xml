@@ -4,7 +4,7 @@
 
     <groupId>ir.cafebazaar</groupId>
     <artifactId>bundlesigner</artifactId>
-    <version>0.1.11</version>
+    <version>0.1.12</version>
 
     <properties>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -25,7 +25,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.2.4</version>
+                <version>3.3.0</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -36,7 +36,9 @@
                             <transformers>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>ir.cafebazaar.bundlesigner.BundleSignerTool</mainClass>
+                                    <manifestEntries>
+                                        <Main-Class>ir.cafebazaar.bundlesigner.BundleSignerTool</Main-Class>
+                                    </manifestEntries>
                                 </transformer>
                             </transformers>
                             <filters>
@@ -52,18 +54,6 @@
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
-                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
-                        </manifest>
-                    </archive>
-                </configuration>
             </plugin>
         </plugins>
 
