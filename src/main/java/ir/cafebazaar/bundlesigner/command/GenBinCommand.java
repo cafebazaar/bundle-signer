@@ -118,12 +118,12 @@ public class GenBinCommand {
         logger.info("started genbin command.");
         String apksPath = BundleToolWrapper.buildApkSet(bundle, TMP_DIR_PATH, false);
         String universalPath = BundleToolWrapper.buildApkSet(bundle, TMP_DIR_PATH, true);
+        System.gc();
 
         File binV1 = new File(TMP_DIR_PATH + File.separator + "binv1");
         File binV2V3 = new File(TMP_DIR_PATH + File.separator + "binv2_v3");
 
         extractAndSignApkSet(apksPath, binV1, binV2V3);
-
         extractAndSignApkSet(universalPath, binV1, binV2V3);
 
         generateFinalBinFile(binV1, binV2V3);
@@ -144,6 +144,7 @@ public class GenBinCommand {
         for (FileHeader apkSetEntry : apkSetEntries) {
             if (!apkSetEntry.getFileName().contains("apk"))
                 continue;
+            logger.info("signing " + apkSetEntry.getFileName());
 
             File apk = new File(TMP_DIR_PATH + File.separator + apkSetEntry.getFileName());
             new File(apk.getParent()).mkdirs();
@@ -152,6 +153,7 @@ public class GenBinCommand {
             apkName = apkName.replace("/", "_");
 
             calculateSignOfApk(apkName, binV1, binV2V3, apk);
+            logger.info("signed " + apkSetEntry.getFileName());
         }
     }
 

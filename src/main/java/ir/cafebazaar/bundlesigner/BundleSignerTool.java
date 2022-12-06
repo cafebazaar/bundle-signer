@@ -167,9 +167,14 @@ public class BundleSignerTool {
             exitMessage = e.getMessage() + "\n" + Arrays.toString(e.getStackTrace());
             exitCode = 4;
 
-        } finally {
-            if (!exitMessage.isEmpty())
+        } catch (OutOfMemoryError e){
+            exitMessage = e.getMessage() + "\n" + Arrays.toString(e.getStackTrace());
+            exitCode = 9;
+        }finally {
+            if (!exitMessage.isEmpty()) {
                 System.err.println(exitMessage);
+                logger.info(exitMessage);
+            }
             System.exit(exitCode);
         }
     }
