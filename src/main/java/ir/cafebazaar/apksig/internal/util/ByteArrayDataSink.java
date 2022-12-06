@@ -101,11 +101,13 @@ public class ByteArrayDataSink implements ReadableDataSink {
         if (minCapacity <= mArray.length) {
             return;
         }
-        if (minCapacity > Integer.MAX_VALUE) {
+        int memoryGuard = 1024;
+        int maxArraySize = Integer.MAX_VALUE - memoryGuard;
+        if (minCapacity > maxArraySize) {
             throw new IOException(
-                    "Required capacity too large: " + minCapacity + ", max: " + Integer.MAX_VALUE);
+                    "Required capacity too large: " + minCapacity + ", max: " + maxArraySize);
         }
-        int doubleCurrentSize = (int) Math.min(mArray.length * 2L, Integer.MAX_VALUE);
+        int doubleCurrentSize = (int) Math.min(mArray.length * 2L, maxArraySize);
         int newSize = (int) Math.max(minCapacity, doubleCurrentSize);
         mArray = Arrays.copyOf(mArray, newSize);
     }
