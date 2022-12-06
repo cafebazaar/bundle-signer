@@ -142,9 +142,8 @@ public class GenBinCommand {
         List<FileHeader> apkSetEntries = apkZip.getFileHeaders();
 
         for (FileHeader apkSetEntry : apkSetEntries) {
-            if (!apkSetEntry.getFileName().contains("apk")) {
+            if (!apkSetEntry.getFileName().contains("apk"))
                 continue;
-            }
             logger.info("signing " + apkSetEntry.getFileName());
 
             File apk = new File(TMP_DIR_PATH + File.separator + apkSetEntry.getFileName());
@@ -294,7 +293,6 @@ public class GenBinCommand {
 
             readerV1.close();
             readerV2V3.close();
-            writer.flush();
             writer.close();
         }
     }

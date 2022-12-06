@@ -172,7 +172,7 @@ public class BundleSignerTool {
             exitCode = 9;
         }finally {
             if (!exitMessage.isEmpty()) {
-                System.out.println(exitMessage);
+                System.err.println(exitMessage);
                 logger.info(exitMessage);
             }
             System.exit(exitCode);
