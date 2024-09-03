@@ -44,7 +44,7 @@ jobs:
     steps:
 
       - name: Download test resources
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4.1.7
         with:
           name: test_resources
 
@@ -89,12 +89,12 @@ jobs:
     steps:
 
       - name: Download sign info
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4.1.7
         with:
           name: sign_file
 
       - name: Download test resources
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4.1.7
         with:
           name: test_resources
 
