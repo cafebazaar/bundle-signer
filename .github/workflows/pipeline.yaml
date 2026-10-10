@@ -118,3 +118,41 @@ jobs:
           cp 17_* bin_files/
           for bin_file in bin_files/*.bin ; do  java -jar bundlesigner.jar signbundle --bundle bundle.aab --bin $bin_file --out result && rm -r result ; done
           echo "signed bundle"
+
+  test-key-rotation:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download test resources
+        uses: actions/download-artifact@v2
+        with:
+          name: test_resources
+
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+          distribution: 'adopt'
+
+      - name: Generate, sign and verify a rotated bundle
+        run: |
+          R=rotation
+          java -jar bundlesigner.jar genbin --bundle bundle.aab --bin . --v2-signing-enabled true --v3-signing-enabled true \
+            --lineage $R/rsa-2048-lineage-2-signers \
+            --key $R/rsa-2048.pk8 --cert $R/rsa-2048.x509.pem --next-signer --key $R/rsa-2048_2.pk8 --cert $R/rsa-2048_2.x509.pem
+          java -jar bundlesigner.jar signbundle --bundle bundle.aab --bin bundle.bin --out result
+          java -jar bundlesigner.jar verify -v result/universal.apk | tee verify.txt
+          grep -q "Verified using v3 scheme (APK Signature Scheme v3): true" verify.txt
+          APKSIGNER=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)/apksigner
+          $APKSIGNER lineage --in result/universal.apk --print-certs | tee lineage.txt
+          test "$(grep -c 'in lineage certificate SHA-256' lineage.txt)" -eq 2
+
+      - name: Reject lineage without v3
+        run: |
+          R=rotation
+          set +e
+          java -jar bundlesigner.jar genbin --bundle bundle.aab --bin . --v3-signing-enabled false \
+            --lineage $R/rsa-2048-lineage-2-signers \
+            --key $R/rsa-2048.pk8 --cert $R/rsa-2048.x509.pem --next-signer --key $R/rsa-2048_2.pk8 --cert $R/rsa-2048_2.x509.pem
+          test $? -eq 2
