@@ -77,6 +77,29 @@ public class RotationOptionsTest {
                 "is not in the provided lineage");
     }
 
+    @Test
+    public void signersWithoutOldestLineageCertificateAreRejected() throws Exception {
+        SigningCertificateLineage lineage = TestFixtures.lineage("rsa-2048-lineage-3-signers");
+        assertRejected(() -> RotationOptions.checkSignersInLineage(lineage,
+                        Arrays.asList(TestFixtures.signer("rsa-2048_2"), TestFixtures.signer("rsa-2048_3"))),
+                "The oldest certificate in the lineage");
+    }
+
+    @Test
+    public void duplicateSignersAreRejected() throws Exception {
+        SigningCertificateLineage lineage = TestFixtures.lineage(LINEAGE);
+        assertRejected(() -> RotationOptions.checkSignersInLineage(lineage,
+                        Arrays.asList(TestFixtures.signer("rsa-2048"), TestFixtures.signer("rsa-2048"))),
+                "more than once");
+    }
+
+    @Test
+    public void oldestAndNewestOfLongerLineageAreAccepted() throws Exception {
+        SigningCertificateLineage lineage = TestFixtures.lineage("rsa-2048-lineage-3-signers");
+        RotationOptions.checkSignersInLineage(lineage,
+                Arrays.asList(TestFixtures.signer("rsa-2048"), TestFixtures.signer("rsa-2048_3")));
+    }
+
     private interface ThrowingAction {
         void run() throws Exception;
     }
