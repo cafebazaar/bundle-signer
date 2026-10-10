@@ -43,6 +43,11 @@ public final class TestFixtures {
 
     public static File genBin(File outDir, boolean v2, boolean v3, ApkSigner.SignerConfig... signers)
             throws Exception {
+        return genBin(outDir, v2, v3, null, signers);
+    }
+
+    public static File genBin(File outDir, boolean v2, boolean v3, SigningCertificateLineage lineage,
+                              ApkSigner.SignerConfig... signers) throws Exception {
         outDir.mkdirs();
         new GenBinCommand.Builder()
                 .setBundle(BUNDLE)
@@ -51,6 +56,7 @@ public final class TestFixtures {
                 .setSignV3Enabled(v3)
                 .setSingerConfigs(Arrays.asList(signers))
                 .setDebuggableApkPermitted(true)
+                .setSigningCertificateLineage(lineage)
                 .build()
                 .execute();
         return new File(outDir, "bundle.bin");
