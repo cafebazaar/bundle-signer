@@ -31,6 +31,13 @@ java -jar bundlesigner-0.1.14.jar genbin --bundle app.aab --bin . \
   --lineage lineage.bin \
   --ks old.jks --ks-key-alias old --next-signer --ks new.jks --ks-key-alias new
 ```
+- After rotating, sign **every** future bundle this way (lineage + old key + new key). Devices running Android 8.1 or
+  lower only check the v1/v2 signatures, which stay on the old key, and existing installs need the lineage to accept the
+  new key. Signing with only the new key breaks updates for existing users.
+- Keep the old keystore and the lineage file permanently, alongside the new key.
+- The order of the keys does not matter; the oldest key in the lineage is used for v1/v2 and the newest for v3. The
+  oldest certificate in the lineage must be one of the keys you pass.
+- Passwords are prompted for (or read from `--ks-pass`/`--key-pass`) in command-line order: `signer #1`, `signer #2`.
 
 ### General Flags  
 <center>
@@ -42,7 +49,7 @@ java -jar bundlesigner-0.1.14.jar genbin --bundle app.aab --bin . \
 | --bin |  Output path of desired directory to save the generated bin file|
 | --v2-signing-enabled | Whether to enable signing using APK Signature Scheme v2 (aka v2 signing scheme) introduced in Android Nougat, API Level 24.|  
 | --v3-signing-enabled | Whether to enable signing using APK Signature Scheme v3 (aka v3 signing scheme) introduced in Android P, API Level 28. |  
-| --lineage | Signing certificate lineage file (from `apksigner rotate`) for APK Signature Scheme v3 key rotation. Requires `--v3-signing-enabled true` and two signers separated by `--next-signer`; v1/v2 are signed with the old key, v3 with the new key. |
+| --lineage | Signing certificate lineage file (from `apksigner rotate`) for APK Signature Scheme v3 key rotation. Requires `--v3-signing-enabled true` and at least two signers (oldest and newest) separated by `--next-signer`; v1/v2 are signed with the old key, v3 with the new key. |
 </center>
   
 ### Per-Signer Flags

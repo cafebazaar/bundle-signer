@@ -27,8 +27,10 @@
  --lineage             Signing certificate lineage file (as written by
                        apksigner rotate) proving rotation from the old signing
                        key to the new one. Requires --v3-signing-enabled true
-                       and two signers delimited by --next-signer. v1 and v2
-                       are signed with the oldest signer, v3 with the newest.
+                       and at least two signers (oldest and newest) delimited
+                       by --next-signer. v1 and v2 are signed with the oldest
+                       signer, v3 with the newest. After rotating, sign every
+                       future bundle with the lineage and both keys.
 
  --force-stamp-overwrite  Whether to overwrite existing source stamp in the
                        APK, if found. By default, it is set to false. It has no
