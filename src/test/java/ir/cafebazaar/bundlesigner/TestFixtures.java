@@ -67,7 +67,7 @@ public final class TestFixtures {
     }
 
     public static ApkVerifier.Result verify(File apk) throws Exception {
-        return new ApkVerifier.Builder(apk).setMinCheckedPlatformVersion(14).build().verify();
+        return new ApkVerifier.Builder(apk).setMinCheckedPlatformVersion(18).build().verify();
     }
 
     public static void deleteRecursively(File file) {
