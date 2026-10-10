@@ -24,6 +24,12 @@
                        (aka v3 signing scheme) introduced in Android P,
                        API Level 28.
 
+ --lineage             Signing certificate lineage file (as written by
+                       apksigner rotate) proving rotation from the old signing
+                       key to the new one. Requires --v3-signing-enabled true
+                       and two signers delimited by --next-signer. v1 and v2
+                       are signed with the oldest signer, v3 with the newest.
+
  --force-stamp-overwrite  Whether to overwrite existing source stamp in the
                        APK, if found. By default, it is set to false. It has no
                        effect if no source stamp signer config is provided.
@@ -172,5 +178,8 @@
 
  $ bundlesigner genbin  -v --bundle app.aab --bin /home/bin_files/ --v2-signing-enabled true --v3-signing-enabled false
    --key dsa-1024.pk8  --cert dsa-1024.x509.pem
+
+ $ bundlesigner genbin --bundle app.aab --bin . --v2-signing-enabled true --v3-signing-enabled true
+   --lineage lineage.bin --ks old.jks --ks-key-alias old --next-signer --ks new.jks --ks-key-alias new
 
 
