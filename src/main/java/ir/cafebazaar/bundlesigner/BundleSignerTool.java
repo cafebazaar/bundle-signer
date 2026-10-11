@@ -22,6 +22,7 @@ package ir.cafebazaar.bundlesigner;
 import com.android.tools.build.bundletool.model.exceptions.InvalidBundleException;
 import ir.cafebazaar.apksig.ApkSigner;
 import ir.cafebazaar.apksig.ApkVerifier;
+import ir.cafebazaar.apksig.SigningCertificateLineage;
 import ir.cafebazaar.apksig.apk.ApkFormatException;
 import ir.cafebazaar.apksig.apk.MinSdkVersionException;
 import ir.cafebazaar.bundlesigner.command.GenBinCommand;
@@ -208,6 +209,7 @@ public class BundleSignerTool {
         int minSdkVersion = 1;
         boolean minSdkVersionSpecified = false;
         int maxSdkVersion = Integer.MAX_VALUE;
+        String lineagePath = null;
 
         List<SignerParams> signers = new ArrayList<>(1);
         SignerParams signerParams = new SignerParams();
@@ -305,6 +307,15 @@ public class BundleSignerTool {
                 case "cert":
                     signerParams.setCertFile(optionsParser.getRequiredValue("Certificate file"));
                     break;
+                case "lineage":
+                    lineagePath = optionsParser.getRequiredValue("Lineage file");
+                    break;
+                case "next-signer":
+                    if (!signerParams.isEmpty()) {
+                        signers.add(signerParams);
+                        signerParams = new SignerParams();
+                    }
+                    break;
                 default:
                     throw new ParameterException(
                             "Unsupported option: " + optionOriginalForm + ". See --help for supported"
@@ -337,6 +348,10 @@ public class BundleSignerTool {
             throw new ParameterException("At least one signer must be specified");
         }
 
+        RotationOptions.validate(v3SigningEnabled, lineagePath != null, signers.size());
+        SigningCertificateLineage lineage =
+                lineagePath == null ? null : RotationOptions.loadLineage(lineagePath);
+
         if ((minSdkVersionSpecified) && (minSdkVersion > maxSdkVersion)) {
             throw new ParameterException(
                     "Min API Level (" + minSdkVersion + ") > max API Level (" + maxSdkVersion + ")");
@@ -362,6 +377,10 @@ public class BundleSignerTool {
             }
         }
 
+        if (lineage != null) {
+            RotationOptions.checkSignersInLineage(lineage, signerConfigs);
+        }
+
         GenBinCommand.Builder commandBuilder = new GenBinCommand.Builder();
         commandBuilder.setBundle(bundlePath)
                 .setBin(binFilePath)
@@ -371,7 +390,8 @@ public class BundleSignerTool {
                 .setVerbose(verbose)
                 .setMinSdkVersionSpecified(minSdkVersionSpecified)
                 .setMinSdkVersion(minSdkVersion)
-                .setDebuggableApkPermitted(debuggableApkPermitted);
+                .setDebuggableApkPermitted(debuggableApkPermitted)
+                .setSigningCertificateLineage(lineage);
 
         GenBinCommand command = commandBuilder.build();
         command.execute();

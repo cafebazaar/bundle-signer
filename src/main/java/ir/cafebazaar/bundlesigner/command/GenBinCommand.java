@@ -1,6 +1,7 @@
 package ir.cafebazaar.bundlesigner.command;
 
 import ir.cafebazaar.apksig.ApkSigner;
+import ir.cafebazaar.apksig.SigningCertificateLineage;
 import ir.cafebazaar.bundlesigner.BundleToolWrapper;
 import net.lingala.zip4j.ZipFile;
 import net.lingala.zip4j.model.FileHeader;
@@ -8,6 +9,8 @@ import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,13 +27,16 @@ public class GenBinCommand {
     private final int minSdkVersion;
     private final boolean minSdkVersionSpecified;
     private final boolean verbose;
+    private final SigningCertificateLineage signingCertificateLineage;
+    private String workDir;
 
     private static final Logger logger = Logger.getLogger(String.valueOf(GenBinCommand.class));
 
 
     private GenBinCommand(File bundle, File bin, boolean signV2Enabled, boolean signV3Enabled, boolean permitted,
                           List<ApkSigner.SignerConfig> signerConfigs, int version, boolean minSdkVersionSpecified,
-                          boolean verbose) {
+                          boolean verbose, SigningCertificateLineage signingCertificateLineage) {
+        this.signingCertificateLineage = signingCertificateLineage;
         this.bin = bin;
         this.bundle = bundle;
         this.verbose = verbose;
@@ -45,15 +51,16 @@ public class GenBinCommand {
 
     public static class Builder {
 
-        private static File bundle;
-        private static String binFilePath;
-        private static boolean signV2Enabled;
-        private static boolean signV3Enabled;
-        private static boolean debuggableApkPermitted;
-        private static List<ApkSigner.SignerConfig> signerConfigs;
-        private static int minSdkVersion;
-        private static boolean minSdkVersionSpecified;
-        private static boolean verbose;
+        private File bundle;
+        private String binFilePath;
+        private boolean signV2Enabled;
+        private boolean signV3Enabled;
+        private boolean debuggableApkPermitted;
+        private List<ApkSigner.SignerConfig> signerConfigs;
+        private int minSdkVersion;
+        private boolean minSdkVersionSpecified;
+        private boolean verbose;
+        private SigningCertificateLineage signingCertificateLineage;
 
 
         public GenBinCommand.Builder setBundle(String bundlePath) {
@@ -82,7 +89,7 @@ public class GenBinCommand {
         }
 
         public GenBinCommand.Builder setSingerConfigs(List<ApkSigner.SignerConfig> signerConfigs) {
-            Builder.signerConfigs = signerConfigs;
+            this.signerConfigs = signerConfigs;
             return this;
         }
 
@@ -97,7 +104,12 @@ public class GenBinCommand {
         }
 
         public GenBinCommand.Builder setVerbose(boolean verbose) {
-            Builder.verbose = verbose;
+            this.verbose = verbose;
+            return this;
+        }
+
+        public GenBinCommand.Builder setSigningCertificateLineage(SigningCertificateLineage lineage) {
+            this.signingCertificateLineage = lineage;
             return this;
         }
 
@@ -110,18 +122,19 @@ public class GenBinCommand {
             File bin = new File(binFilePath + File.separator + binFileName);
 
             return new GenBinCommand(bundle, bin, signV2Enabled, signV3Enabled, debuggableApkPermitted, signerConfigs,
-                    minSdkVersion, minSdkVersionSpecified, verbose);
+                    minSdkVersion, minSdkVersionSpecified, verbose, signingCertificateLineage);
         }
     }
 
     public void execute() throws Exception {
         logger.info("started genbin command.");
-        String apksPath = BundleToolWrapper.buildApkSet(bundle, TMP_DIR_PATH, false);
-        String universalPath = BundleToolWrapper.buildApkSet(bundle, TMP_DIR_PATH, true);
+        workDir = Files.createTempDirectory(Paths.get(TMP_DIR_PATH), "genbin").toString();
+        String apksPath = BundleToolWrapper.buildApkSet(bundle, workDir, false);
+        String universalPath = BundleToolWrapper.buildApkSet(bundle, workDir, true);
         System.gc();
 
-        File binV1 = new File(TMP_DIR_PATH + File.separator + "binv1");
-        File binV2V3 = new File(TMP_DIR_PATH + File.separator + "binv2_v3");
+        File binV1 = new File(workDir + File.separator + "binv1");
+        File binV2V3 = new File(workDir + File.separator + "binv2_v3");
 
         extractAndSignApkSet(apksPath, binV1, binV2V3);
         extractAndSignApkSet(universalPath, binV1, binV2V3);
@@ -136,7 +149,7 @@ public class GenBinCommand {
 
     private void extractAndSignApkSet(String apksPath, File binV1, File binV2V3) throws Exception {
         ZipFile apkZip = new ZipFile(apksPath);
-        apkZip.extractAll(TMP_DIR_PATH);
+        apkZip.extractAll(workDir);
         logger.info("Extracted apk set.");
 
         List<FileHeader> apkSetEntries = apkZip.getFileHeaders();
@@ -146,7 +159,7 @@ public class GenBinCommand {
                 continue;
             logger.info("signing " + apkSetEntry.getFileName());
 
-            File apk = new File(TMP_DIR_PATH + File.separator + apkSetEntry.getFileName());
+            File apk = new File(workDir + File.separator + apkSetEntry.getFileName());
             new File(apk.getParent()).mkdirs();
 
             String apkName = apkSetEntry.getFileName().split(".apk")[0] + ".apk";
@@ -175,22 +188,27 @@ public class GenBinCommand {
         String digest = apkSigner.genV1Bin();
 
         apkSignerBuilder = new ApkSigner.Builder(signerConfigs)
-                .setSignDigest(apk.getPath(), digest);
+                .setSignDigest(apk.getPath(), digest)
+                .setSigningCertificateLineage(signingCertificateLineage);
 
         apkSigner = apkSignerBuilder.build();
         String signV1 = apkSigner.signV1();
+        if (signV1 == null) {
+            throw new IllegalStateException("Failed to generate v1 signature for " + apkName);
+        }
         appendSignToFile(binV1, apk.getName(), signV1);
 
 
         if (signV2Enabled || signV3Enabled) {
             // sign version 1
-            File outputApk = new File(TMP_DIR_PATH + File.separator + "out_" + apkName);
+            File outputApk = new File(workDir + File.separator + "out_" + apkName);
 
 
             apkSignerBuilder = new ApkSigner.Builder(signerConfigs, true)
                     .setInputApk(apk)
                     .setOutputApk(outputApk)
-                    .setSignDigest(apk.getPath(), signV1);
+                    .setSignDigest(apk.getPath(), signV1)
+                    .setSigningCertificateLineage(signingCertificateLineage);
             apkSigner = apkSignerBuilder.build();
             apkSigner.addSignV1ToApk();
 
@@ -223,7 +241,7 @@ public class GenBinCommand {
                             .setVerityEnabled(false)
                             .setV4ErrorReportingEnabled(false)
                             .setDebuggableApkPermitted(debuggableApkPermitted)
-                            .setSigningCertificateLineage(null);
+                            .setSigningCertificateLineage(signingCertificateLineage);
             if (minSdkVersionSpecified) {
                 apkSignerBuilder.setMinSdkVersion(minSdkVersion);
             }

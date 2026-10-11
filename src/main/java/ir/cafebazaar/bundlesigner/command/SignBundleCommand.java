@@ -8,6 +8,8 @@ import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +28,7 @@ public class SignBundleCommand {
 
     private boolean signV2Enabled;
     private boolean signV3Enabled;
+    private String workDir;
 
     private static final Logger logger = Logger.getLogger(String.valueOf(SignBundleCommand.class));
 
@@ -37,9 +40,9 @@ public class SignBundleCommand {
 
     public static class Builder {
 
-        private static File bundle;
-        private static File binFile;
-        private static String outputPath;
+        private File bundle;
+        private File binFile;
+        private String outputPath;
 
         public Builder setBundle(String bundlePath) {
             bundle = new File(bundlePath);
@@ -52,7 +55,7 @@ public class SignBundleCommand {
         }
 
         public Builder setOutputPath(String outputPath) {
-            Builder.outputPath = outputPath;
+            this.outputPath = outputPath;
             return this;
         }
 
@@ -72,7 +75,7 @@ public class SignBundleCommand {
 
         String[] signVersionInfo = line.split(","); // Example: v2:true,v3:false
         signV2Enabled = signVersionInfo[0].split(":")[1].trim().equals("true");
-        signV3Enabled = signVersionInfo[0].split(":")[1].trim().equals("true");
+        signV3Enabled = signVersionInfo[1].split(":")[1].trim().equals("true");
 
         apkSignV1 = new HashMap<>();
         apkSignV2V3 = new HashMap<>();
@@ -101,8 +104,9 @@ public class SignBundleCommand {
     public void execute() throws Exception {
         logger.info("Started sign command.");
         processBinFile();
+        workDir = Files.createTempDirectory(Paths.get(TMP_DIR_PATH), "signbundle").toString();
         String apksPath = BundleToolWrapper.buildApkSet(bundle, outputPath, false);
-        String universalPath = BundleToolWrapper.buildApkSet(bundle, TMP_DIR_PATH, true);
+        String universalPath = BundleToolWrapper.buildApkSet(bundle, workDir, true);
 
         extractAndSignApks(apksPath);
         extractAndSignApks(universalPath);
@@ -110,7 +114,7 @@ public class SignBundleCommand {
 
     private void extractAndSignApks(String apksPath) throws Exception {
         ZipFile apkZip = new ZipFile(apksPath);
-        apkZip.extractAll(TMP_DIR_PATH);
+        apkZip.extractAll(workDir);
         List<FileHeader> apkSetEntries = apkZip.getFileHeaders();
 
         for (FileHeader apkSetEntry : apkSetEntries) {
@@ -132,7 +136,7 @@ public class SignBundleCommand {
 
             File v1SignedApk;
             if (signV2Enabled || signV3Enabled) {
-                v1SignedApk = new File(TMP_DIR_PATH + File.separator + "v1_" + apkName);
+                v1SignedApk = new File(workDir + File.separator + "v1_" + apkName);
             } else {
                 if (apkType != null) {
                     v1SignedApk = new File(outputPath + File.separator + apkType + "_" + apkName);
@@ -143,7 +147,7 @@ public class SignBundleCommand {
                 }
             }
 
-            File apk = new File(TMP_DIR_PATH + File.separator + apkSetEntry.getFileName());
+            File apk = new File(workDir + File.separator + apkSetEntry.getFileName());
             List<ApkSigner.SignerConfig> signerConfigs = new ArrayList<>(0);
 
             String apkDigest;

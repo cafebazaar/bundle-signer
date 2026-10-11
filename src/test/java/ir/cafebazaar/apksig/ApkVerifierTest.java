@@ -346,7 +346,7 @@ public class ApkVerifierTest {
         // Based on v2-only-with-rsa-pkcs1-sha256-2048.apk.
         assertVerificationFailure(
                 "v2-only-with-rsa-pkcs1-sha256-2048-sig-does-not-verify.apk",
-                Issue.V2_SIG_VERIFY_EXCEPTION);
+                Issue.V2_SIG_DID_NOT_VERIFY);
 
         // Bitflip in the ECDSA signature. Based on v2-only-with-ecdsa-sha256-p256.apk.
         assertVerificationFailure(

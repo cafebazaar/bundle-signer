@@ -1,5 +1,7 @@
 package ir.cafebazaar.bundlesigner.command;
 
+import ir.cafebazaar.apksig.ApkVerifier;
+import ir.cafebazaar.bundlesigner.TestFixtures;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,5 +55,15 @@ public class SignBundleCommandTest {
         assertTrue(new File(outputDir + File.separator + String.format("%s.apks", bundleFileName)).exists());
         assertTrue(new File(outputDir + File.separator + "splits_base-master.apk").exists());
         assertFalse(new File(outputDir + File.separator + "universal.apks").exists());
+    }
+
+    @Test
+    public void v3OnlyBinProducesV3SignedApks() throws Exception {
+        File bin = TestFixtures.genBin(new File(outputDir, "bin"), false, true, TestFixtures.signer("rsa-2048"));
+        File out = TestFixtures.signBundle(bin, new File(outputDir, "apks"));
+
+        ApkVerifier.Result result = TestFixtures.verify(new File(out, "universal.apk"));
+        assertTrue(result.getErrors().toString(), result.isVerified());
+        assertTrue(result.isVerifiedUsingV3Scheme());
     }
 }

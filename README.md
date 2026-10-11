@@ -16,12 +16,28 @@ Bundle signer is a command-line tool. You need to install **Java 8 or above** to
 shows how to generate signed binary file of your bundle application assuming you are using Java keystore to sign APK
 files of your application:
 ```sh  
-java -jar bundlesigner-0.1.13.jar genbin  -v --bundle app.aab --bin .  --v2-signing-enabled true --v3-signing-enabled false --ks key.jks   
+java -jar bundlesigner-0.1.14.jar genbin  -v --bundle app.aab --bin .  --v2-signing-enabled true --v3-signing-enabled false --ks key.jks   
 ```
 This generates signed digest of the provided bundle. The output of this command is a binary file that contains signed 
 digest of all APK files that can be extracted from the bundle. Signing is performed using one or more signers, each 
 represented by an asymmetric key pair and a corresponding certificate. Typically, signing is done using just one signer.
 For each signer, you need to provide the signer's private key and certificate.  
+
+### Key rotation (APK Signature Scheme v3)
+If you rotated your signing key and have a lineage file, pass both keys and the lineage:
+```sh
+java -jar bundlesigner-0.1.14.jar genbin --bundle app.aab --bin . \
+  --v2-signing-enabled true --v3-signing-enabled true \
+  --lineage lineage.bin \
+  --ks old.jks --ks-key-alias old --next-signer --ks new.jks --ks-key-alias new
+```
+- After rotating, sign **every** future bundle this way (lineage + old key + new key). Devices running Android 8.1 or
+  lower only check the v1/v2 signatures, which stay on the old key, and existing installs need the lineage to accept the
+  new key. Signing with only the new key breaks updates for existing users.
+- Keep the old keystore and the lineage file permanently, alongside the new key.
+- The order of the keys does not matter; the oldest key in the lineage is used for v1/v2 and the newest for v3. The
+  oldest certificate in the lineage must be one of the keys you pass.
+- Passwords are prompted for (or read from `--ks-pass`/`--key-pass`) in command-line order: `signer #1`, `signer #2`.
 
 ### General Flags  
 <center>
@@ -33,6 +49,7 @@ For each signer, you need to provide the signer's private key and certificate.
 | --bin |  Output path of desired directory to save the generated bin file|
 | --v2-signing-enabled | Whether to enable signing using APK Signature Scheme v2 (aka v2 signing scheme) introduced in Android Nougat, API Level 24.|  
 | --v3-signing-enabled | Whether to enable signing using APK Signature Scheme v3 (aka v3 signing scheme) introduced in Android P, API Level 28. |  
+| --lineage | Signing certificate lineage file (from `apksigner rotate`) for APK Signature Scheme v3 key rotation. Requires `--v3-signing-enabled true` and at least two signers (oldest and newest) separated by `--next-signer`; v1/v2 are signed with the old key, v3 with the new key. |
 </center>
   
 ### Per-Signer Flags
