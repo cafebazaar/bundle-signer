@@ -112,6 +112,8 @@ Pre-compiled versions are available [here](https://github.com/cafebazaar/bundle-
 maven to compile and package bundle-signer by running the following command:
 
 ```sh  
-mvn clean compile package shade:shade
+mvn clean package
 ```
+The runnable jar is `target/bundlesigner-<version>.jar`. Do not add `shade:shade`: it re-shades the jar without the
+signature-file filters and the resulting jar fails to start with "Invalid signature file digest".
 
