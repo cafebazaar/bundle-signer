@@ -118,8 +118,10 @@ public class GenBinCommand {
             if (bundle == null)
                 return null;
 
-            String binFileName = bundle.getName().split("\\.")[0] + ".bin";
-            File bin = new File(binFilePath + File.separator + binFileName);
+            String bundleName = bundle.getName();
+            int extensionStart = bundleName.lastIndexOf('.');
+            String baseName = extensionStart < 0 ? bundleName : bundleName.substring(0, extensionStart);
+            File bin = new File(binFilePath + File.separator + baseName + ".bin");
 
             return new GenBinCommand(bundle, bin, signV2Enabled, signV3Enabled, debuggableApkPermitted, signerConfigs,
                     minSdkVersion, minSdkVersionSpecified, verbose, signingCertificateLineage);

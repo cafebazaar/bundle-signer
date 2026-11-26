@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class GenBinCommandTest {
 
@@ -26,6 +27,22 @@ public class GenBinCommandTest {
     @After
     public void tearDown() {
         TestFixtures.deleteRecursively(OUT);
+    }
+
+    @Test
+    public void preservesDotsInBundleName() throws Exception {
+        Files.createDirectories(OUT.toPath());
+        File bundle = new File(OUT, "app.release.v2.aab");
+        Files.copy(new File(TestFixtures.BUNDLE).toPath(), bundle.toPath());
+        new GenBinCommand.Builder()
+                .setBundle(bundle.getPath())
+                .setBin(OUT.getPath())
+                .setSingerConfigs(Collections.singletonList(TestFixtures.signer("rsa-2048")))
+                .setDebuggableApkPermitted(true)
+                .build()
+                .execute();
+
+        assertTrue(new File(OUT, "app.release.v2.bin").isFile());
     }
 
     @Test
